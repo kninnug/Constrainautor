@@ -1,5 +1,4 @@
 {
-  "private": true,
   "name": "@kninnug/constrainautor",
   "version": "1.0.0",
   "description": "A small library for constraining a Delaunator triangulation",
@@ -22,7 +21,6 @@
   },
   "keywords": [
     "constrained",
-    "conforming",
     "delaunay",
     "triangulation",
     "Delaunator"
@@ -38,5 +36,13 @@
     "delaunator": "^4.0.1",
     "rollup-plugin-terser": "^5.3.0",
     "tape": "^5.0.1"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/kninnug/constrainautor/issues"
+  },
+  "homepage": "https://github.com/kninnug/constrainautor#readme",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {}
 }

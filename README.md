@@ -9,8 +9,9 @@ Example
 -------
 
 Constrainautor takes a Delaunay triangulation (from Delaunator), and turns it
-into a *constrained* (*conforming*) triangulation. You specify two points in the
-triangulation, and Constrainautor ensures there is an edge between those points.
+into a *constrained* (but not necessarily *conforming*) triangulation. You
+specify two points in the triangulation, and Constrainautor ensures there is an
+edge between those points.
 
 	// A diamond
 	const points = [[150, 50], [50, 200], [150, 350], [250, 200]],
