@@ -1,0 +1,42 @@
+{
+  "private": true,
+  "name": "@kninnug/constrainautor",
+  "version": "1.0.0",
+  "description": "A small library for constraining a Delaunator triangulation",
+  "main": "Constrainautor.js",
+  "exports": {
+    "import": "./Constrainautor.mjs",
+    "require": "./Constrainautor.js"
+  },
+  "files": [
+    "Constrainautor.mjs",
+    "Constrainautor.js",
+    "Constrainautor.min.js"
+  ],
+  "scripts": {
+    "test": "node testint.mjs && node test.mjs",
+    "build": "rollup -c",
+    "prepare": "npm run test && npm run build",
+    "clean": "rm -r ./coverage ./Constrainautor.js ./Constrainautor.min.js || true",
+    "bench": "node bench.mjs"
+  },
+  "keywords": [
+    "constrained",
+    "conforming",
+    "delaunay",
+    "triangulation",
+    "Delaunator"
+  ],
+  "author": "Marco Gunnink",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kninnug/constrainautor.git"
+  },
+  "devDependencies": {
+    "cdt2d": "^1.0.0",
+    "delaunator": "^4.0.1",
+    "rollup-plugin-terser": "^5.3.0",
+    "tape": "^5.0.1"
+  }
+}
