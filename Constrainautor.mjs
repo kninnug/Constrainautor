@@ -107,6 +107,10 @@ class Constrainautor {
 				top = prevEdge(adj),
 				rgt = nextEdge(adj);
 			
+			if(adj === -1){
+				throw new Error("Constraining edge exited the hull");
+			}
+			
 			if(this.flips[edg] === CONSD || this.flips[adj] === CONSD){
 				throw new Error("Edge intersects already constrained edge");
 			}
@@ -351,6 +355,7 @@ class Constrainautor {
 	 *
 	 * @private
 	 * @param {number} start The id of an *outgoing* edge.
+	 * @return {number} The id of the right-most incoming edge.
 	 */
 	updateVert(start){
 		const del = this.del,
@@ -378,7 +383,6 @@ class Constrainautor {
 	/**
 	 * Whether the segment between [p1, p2] intersects with [p3, p4].
 	 *
-	 * @private
 	 * @param {number} p1 The index of point 1 into this.del.coords.
 	 * @param {number} p2 The index of point 2 into this.del.coords.
 	 * @param {number} p3 The index of point 3 into this.del.coords.
@@ -406,7 +410,6 @@ class Constrainautor {
 	 * Whether point px is in the circumcircle of the triangle formed by p1, p2,
 	 * and p3.
 	 *
-	 * @private
 	 * @param {number} p1 The index of point 1 into this.del.coords.
 	 * @param {number} p2 The index of point 2 into this.del.coords.
 	 * @param {number} p3 The index of point 3 into this.del.coords.
@@ -425,7 +428,6 @@ class Constrainautor {
 	/**
 	 * Distance between a point and the nearest point to it on a segment, squared.
 	 *
-	 * @private
 	 * @param {number} p1 The index of segment point 1 into this.del.coords.
 	 * @param {number} p2 The index of segment point 2 into this.del.coords.
 	 * @param {number} p The index of the point into this.del.coords.

@@ -2,14 +2,14 @@ import fs from 'fs';
 import tape from 'tape';
 import Constrainautor from './Constrainautor.mjs';
 import Delaunator from 'delaunator';
-import {validateDelaunator, validateVertMap, validateConstraint, validateFlips} from './validators.mjs';
+import {validateDelaunator, validateVertMap, validateConstraint, validateFlips, RobustConstrainautor} from './validators.mjs';
 
-function testFile(t, json){
+function testFile(t, json, impl = Constrainautor){
 	const points = json.points,
 		edges = json.edges,
 		error = json.error,
 		del = Delaunator.from(points),
-		con = new Constrainautor(del);
+		con = new (impl)(del);
 	
 	validateDelaunator(t, points, con.del);
 	validateVertMap(t, points, con);
@@ -77,12 +77,21 @@ function testExample(t){
 	t.end();
 }
 
-const files = fs.readdirSync('./tests/', 'utf8').map(f => './tests/' + f);
+function testIssue2(t){
+	const obj = JSON.parse(fs.readFileSync('./tests/issue2.json'), 'utf8');
+	obj.error = null;
+	return testFile(t, obj, RobustConstrainautor);
+}
+
+const files = fs.readdirSync('./tests/', 'utf8').map(f => './tests/' + f)
+		.concat(fs.readdirSync('./tests/ipa/', 'utf8').map(f => './tests/ipa/' + f))
+		.filter(f => f.endsWith('.json'));
 
 function main(args){
 	if(!args.length){
 		tape.test("Example", testExample);
 		tape.test("Constructor", testConstructor);
+		tape.test("issue #2", testIssue2);
 	}
 	
 	args = args.length ? args : files;

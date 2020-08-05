@@ -3,6 +3,7 @@ import Delaunator from 'delaunator';
 import Constrainautor from './Constrainautor.mjs';
 import cdt2d from 'cdt2d';
 import os from 'os';
+import {RobustConstrainautor} from './validators.mjs';
 
 const COUNT = 100;
 
@@ -13,6 +14,12 @@ function triangulateCdt2d(points, edges){
 function triangulateCon(points, edges){
 	const del = Delaunator.from(points),
 		con = new Constrainautor(del);
+	con.constrainAll(edges);
+}
+
+function triangulateRobust(points, edges){
+	const del = Delaunator.from(points),
+		con = new RobustConstrainautor(del);
 	con.constrainAll(edges);
 }
 
@@ -72,7 +79,9 @@ function benchFiles(files, count, triangulate){
 	console.table(results);
 }
 
-const files = fs.readdirSync('./tests/', 'utf8').map(f => './tests/' + f);
+const files = fs.readdirSync('./tests/', 'utf8').map(f => './tests/' + f)
+		.concat(fs.readdirSync('./tests/ipa/', 'utf8').map(f => './tests/ipa/' + f))
+		.filter(f => f.endsWith('.json'));
 
 function main(args){
 	args = args.length ? args : files;
@@ -81,6 +90,8 @@ function main(args){
 			COUNT, "triangulations per file. Times in µs.");
 	console.log("cdt2d");
 	benchFiles(args, COUNT, triangulateCdt2d);
+	console.log("Robust");
+	benchFiles(args, COUNT, triangulateRobust);
 	console.log("Constrainautor");
 	benchFiles(args, COUNT, triangulateCon);
 	

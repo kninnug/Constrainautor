@@ -1,4 +1,23 @@
 import Constrainautor from './Constrainautor.mjs';
+import robustIntersect from 'robust-segment-intersect';
+
+class RobustConstrainautor extends Constrainautor {
+	intersectSegments(p1, p2, p3, p4){
+		// ignore when the segments share an end-point
+		if(p1 === p3 || p1 === p4 || p2 === p3 || p2 === p4){
+			return false;
+		}
+		
+		const pts = this.del.coords;
+		
+		return robustIntersect(
+			[pts[p1 * 2], pts[p1 * 2 + 1]],
+			[pts[p2 * 2], pts[p2 * 2 + 1]],
+			[pts[p3 * 2], pts[p3 * 2 + 1]],
+			[pts[p4 * 2], pts[p4 * 2 + 1]]
+		);
+	}
+}
 
 /**
  * Maps keys to sets of values.
@@ -286,7 +305,8 @@ function validateConstraint(t, points, con, ret, [p1, p2]){
 		const [x3, y3] = points[e1],
 			[x4, y4] = points[e2];
 		
-		if(Constrainautor.intersectSegments(x1, y1, x2, y2, x3, y3, x4, y4)){
+		//if(Constrainautor.intersectSegments(x1, y1, x2, y2, x3, y3, x4, y4)){
+		if(robustIntersect([x1, y1], [x2, y2], [x3, y3], [x4, y4])){
 			t.fail("edge intersects constrained edge");
 		}
 	}
@@ -300,4 +320,11 @@ function validateConstraint(t, points, con, ret, [p1, p2]){
 	}
 }
 
-export {validateDelaunator, validateVertMap, validateConstraint, validateFlips, SetMap};
+export {
+	validateDelaunator,
+	validateVertMap,
+	validateConstraint,
+	validateFlips,
+	SetMap,
+	RobustConstrainautor
+};
