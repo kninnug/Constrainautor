@@ -73,14 +73,14 @@ may throw an error during constrainment, or produce bogus results.
   
 To triangulate a set of points, and constrain certain edges:
 
-0. Define the points to be triangulated: `points = [[x1, y1], [x2, y2], ...]`.
-1. Generate a triangulation (using Delaunator): `del = Delaunator.from(points)`.
-2. Make a constrainer: `con = new Constrainautor(del)`. Note that `del` will be
+1. Define the points to be triangulated: `points = [[x1, y1], [x2, y2], ...]`.
+2. Generate a triangulation (using Delaunator): `del = Delaunator.from(points)`.
+3. Make a constrainer: `con = new Constrainautor(del)`. Note that `del` will be
    modified by the Constrainautor methods.
-3. Define the edges to be constrained: `edges = [[0, 1], [3, 4], ...]`. These are
+4. Define the edges to be constrained: `edges = [[0, 1], [3, 4], ...]`. These are
    indices into the `points` array.
-4. Constrain the triangulation: `for(const [p1, p2] of edges){ con.constrainOne(p1, p2); }`.
-5. Restore the Delaunay condition: `con.delaunify()`.
+5. Constrain the triangulation: `for(const [p1, p2] of edges){ con.constrainOne(p1, p2); }`.
+6. Restore the Delaunay condition: `con.delaunify()`.
 
 Alternatively, you can call `con.constrainAll(edges)`, which will constrain all
 the edges in the supplied array and call `delaunify`.
@@ -90,7 +90,7 @@ guide](https://mapbox.github.io/delaunator/).
 
 If you change the point coordinates and their triangulation (via `Delaunator#update`),
 you need to re-constrain the edges by creating a `new Constrainautor` and going
-through steps 3 - 5 again.
+through steps 3 - 6 again.
 
 API reference
 -------------
