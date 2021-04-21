@@ -1,6 +1,6 @@
 import tape from 'tape';
 import Constrainautor from './Constrainautor.mjs';
-const {intersectSegments, segPointDistSq} = Constrainautor;
+const {intersectSegments} = Constrainautor;
 
 const ints = [
 		[true,  ' + ',  [100,50], [100,150],[50,100], [150,100]], // +
@@ -56,56 +56,20 @@ const ints = [
 		// translate both across 0
 		cross: (pts, ret) => mogrifiers.crossx(...mogrifiers.crossy(pts, ret)),
 		// scale both by 1/1000
-		down10k: (pts, ret) => [pts.map(([x, y]) => [x / 1000, y / 1000]), ret],
+		down1k: (pts, ret) => [pts.map(([x, y]) => [x / 1000, y / 1000]), ret],
 		// scale both by 1000
-		up10k: (pts, ret) => [pts.map(([x, y]) => [x * 1000, y * 1000]), ret],
-		// scale both by 1/100000
-		down1M: (pts, ret) => [pts.map(([x, y]) => [x / 100000, y / 100000]), ret],
-		// scale both by 100000
-		up1M: (pts, ret) => [pts.map(([x, y]) => [x * 100000, y * 100000]), ret],
-	},
-	nears = [
-		[0, [100, 50], [100, 50], [100, 150]],
-		[0, [100, 150], [100, 50], [100, 150]],
-		[0, [50, 100], [50, 100], [150, 100]],
-		[0, [150, 100], [50, 100], [150, 100]],
-		[10, [100, 40], [100, 50], [100, 150]],
-		[10, [100, 160], [100, 50], [100, 150]],
-		[10, [40, 100], [50, 100], [150, 100]],
-		[10, [160, 100], [50, 100], [150, 100]],
-		[0, [100, 60], [100, 50], [100, 150]],
-		[0, [100, 140], [100, 50], [100, 150]],
-		[0, [60, 100], [50, 100], [150, 100]],
-		[0, [140, 100], [50, 100], [150, 100]],
-		[20, [80, 50], [100, 50], [100, 150]],
-		[20, [80, 150], [100, 50], [100, 150]],
-		[20, [50, 80], [50, 100], [150, 100]],
-		[20, [150, 80], [50, 100], [150, 100]],
-		[30, [130, 50], [100, 50], [100, 150]],
-		[30, [130, 150], [100, 50], [100, 150]],
-		[30, [50, 130], [50, 100], [150, 100]],
-		[30, [150, 130], [50, 100], [150, 100]],
-		[40, [140, 90], [100, 50], [100, 150]],
-		[40, [140, 110], [100, 50], [100, 150]],
-		[40, [90, 140], [50, 100], [150, 100]],
-		[40, [110, 140], [50, 100], [150, 100]],
-		[50, [50, 90], [100, 50], [100, 150]],
-		[50, [50, 110], [100, 50], [100, 150]],
-		[50, [90, 50], [50, 100], [150, 100]],
-		[50, [110, 50], [50, 100], [150, 100]],
-	];
+		up1k: (pts, ret) => [pts.map(([x, y]) => [x * 1000, y * 1000]), ret],
+		// scale both by 1/1000000
+		down1M: (pts, ret) => [pts.map(([x, y]) => [x / 1000000, y / 1000000]), ret],
+		// scale both by 1000000
+		up1M: (pts, ret) => [pts.map(([x, y]) => [x * 1000000, y * 1000000]), ret],
+	};
 
 function testIntersect(t, pts, should){
 	const [[p1x, p1y], [p2x, p2y], [p3x, p3y], [p4x, p4y]] = pts,
 		ret = intersectSegments(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y);
 	t.assert(ret === should, 
 		`Intersect: [(${p1x},${p1y}), (${p2x},${p2y})] x [(${p3x},${p3y}), (${p4x},${p4y})] == ${should} (${ret})`);
-}
-
-function testNearPoint(t, pts, dist){
-	const [[px, py], [p1x, p1y], [p2x, p2y]] = pts;
-	t.equal(segPointDistSq(p1x, p1y, p2x, p2y, px, py), dist,
-		`Dist²: (${px}, ${py}) - [(${p1x}, ${p1y}), (${p2x}, ${p2y})] == ${dist}`);
 }
 
 function main(args){
@@ -119,14 +83,6 @@ function main(args){
 			}
 		});
 	}
-	
-	tape.test('Distance to nearest point on segment', (t) => {
-		t.plan(nears.length);
-		for(const near of nears){
-			const [dist, ...pts] = near;
-			testNearPoint(t, pts, dist * dist);
-		}
-	});
 }
 
 main(process.argv.slice(2));

@@ -33,7 +33,7 @@ function testFile(t, json, impl = Constrainautor){
 	}
 	
 	if(error){
-		t.equal(caught.message, error, `threw expected error: ${error}`);
+		t.equal(caught && caught.message, error, `threw expected error: ${error}`);
 	}else{
 		t.assert(!caught, "did not throw");
 	}

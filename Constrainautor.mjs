@@ -1,5 +1,6 @@
+import {orient2d, incircle} from 'robust-predicates';
+
 const U32NIL = 2**32 - 1, // Max value of a Uint32Array
-	EPSILON = 2**-51, // Minimum distance between a point and constraining edge
 	IGND = 0, // edge was not changed
 	CONSD = 1, // edge was constrained
 	FLIPD = 2; // edge was flipped
@@ -115,12 +116,8 @@ class Constrainautor {
 				throw new Error("Edge intersects already constrained edge");
 			}
 			
-			const thruPoint = Math.min(
-				this.segPointDistSq(segP1, segP2, del.triangles[edg]),
-				this.segPointDistSq(segP1, segP2, del.triangles[adj])
-			);
-			
-			if(thruPoint <= EPSILON){
+			if(this.isCollinear(segP1, segP2, del.triangles[edg]) ||
+					this.isCollinear(segP1, segP2, del.triangles[adj])){
 				throw new Error("Constraining edge intersects point");
 			}
 			
@@ -381,7 +378,9 @@ class Constrainautor {
 	}
 	
 	/**
-	 * Whether the segment between [p1, p2] intersects with [p3, p4].
+	 * Whether the segment between [p1, p2] intersects with [p3, p4]. When the
+	 * segments share an end-point (e.g. p1 == p3 etc.), they are not considered
+	 * intersecting.
 	 *
 	 * @param {number} p1 The index of point 1 into this.del.coords.
 	 * @param {number} p2 The index of point 2 into this.del.coords.
@@ -408,38 +407,39 @@ class Constrainautor {
 	
 	/**
 	 * Whether point px is in the circumcircle of the triangle formed by p1, p2,
-	 * and p3.
+	 * and p3 (which are in counter-clockwise order).
 	 *
 	 * @param {number} p1 The index of point 1 into this.del.coords.
 	 * @param {number} p2 The index of point 2 into this.del.coords.
 	 * @param {number} p3 The index of point 3 into this.del.coords.
 	 * @param {number} px The index of point x into this.del.coords.
+	 * @return {boolean} True if px is in the circumcircle.
 	 */
 	inCircle(p1, p2, p3, px){
 		const pts = this.del.coords;
-		return inCircle(
+		return incircle(
 			pts[p1 * 2], pts[p1 * 2 + 1],
 			pts[p2 * 2], pts[p2 * 2 + 1],
 			pts[p3 * 2], pts[p3 * 2 + 1],
 			pts[px * 2], pts[px * 2 + 1]
-		);
+		) <= 0.0;
 	}
 	
 	/**
-	 * Distance between a point and the nearest point to it on a segment, squared.
+	 * Whether point p1, p2, and p are collinear.
 	 *
 	 * @param {number} p1 The index of segment point 1 into this.del.coords.
 	 * @param {number} p2 The index of segment point 2 into this.del.coords.
-	 * @param {number} p The index of the point into this.del.coords.
-	 * @return {number} The distance squared.
+	 * @param {number} p The index of the point p into this.del.coords.
+	 * @return {boolean} True if the points are collinear.
 	 */
-	segPointDistSq(p1, p2, p){
+	isCollinear(p1, p2, p){
 		const pts = this.del.coords;
-		return segPointDistSq(
+		return orient2d(
 			pts[p1 * 2], pts[p1 * 2 + 1],
 			pts[p2 * 2], pts[p2 * 2 + 1],
 			pts[p * 2], pts[p * 2 + 1]
-		);
+		) === 0.0;
 	}
 }
 
@@ -450,7 +450,7 @@ function prevEdge(e){ return (e % 3 === 0) ? e + 2 : e - 1; }
  * Compute if two line segments [p1, p2] and [p3, p4] intersect.
  *
  * @name Constrainautor.intersectSegments
- * @source https://stackoverflow.com/a/565282
+ * @source https://github.com/mikolalysenko/robust-segment-intersect
  * @param {number} p1x The x coordinate of point 1 of the first segment.
  * @param {number} p1y The y coordinate of point 1 of the first segment.
  * @param {number} p2x The x coordinate of point 2 of the first segment.
@@ -461,122 +461,34 @@ function prevEdge(e){ return (e % 3 === 0) ? e + 2 : e - 1; }
  * @param {number} p4y The y coordinate of point 2 of the second segment.
  * @return {boolean} True if the line segments intersect.
  */
-function intersectSegments(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y){
-	const rx = p2x - p1x,
-		ry = p2y - p1y,
-		sx = p4x - p3x,
-		sy = p4y - p3y,
-		mx = p3x - p1x,
-		my = p3y - p1y,
-		n = mx * ry - rx * my,
-		d = rx * sy - sx * ry;
-	
-	if(d === 0.0){
-		// collinear
-		if(n === 0.0){
-			const rr = rx * rx + ry * ry,
-				t0 = (mx * rx + my * ry) / rr,
-				t1 = t0 + (sx * rx + sy * ry) / rr;
-			
-			if(!((t0 < 0 && t1 < 0) || (t0 > 1 && t1 > 1))){
-				// collinear & overlapping
-				return true;
-			}
-		}
-		
+function intersectSegments(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y) {
+	const x0 = orient2d(p1x, p1y, p3x, p3y, p4x, p4y),
+		y0 = orient2d(p2x, p2y, p3x, p3y, p4x, p4y)
+	if((x0 > 0 && y0 > 0) || (x0 < 0 && y0 < 0)) {
+		return false
+	}
+
+	const x1 = orient2d(p3x, p3y, p1x, p1y, p2x, p2y),
+		y1 = orient2d(p4x, p4y, p1x, p1y, p2x, p2y);
+	if((x1 > 0 && y1 > 0) || (x1 < 0 && y1 < 0)) {
 		return false;
 	}
-	
-	const u = n / d,
-		t = (mx * sy - sx * my) / d;
-	
-	if(t < 0.0 || t > 1.0 || u < 0.0 || u > 1.0){
-		return false;
+
+	//Check for degenerate collinear case
+	if(x0 === 0 && y0 === 0 && x1 === 0 && y1 === 0) {
+		return !(Math.max(p3x, p4x) < Math.min(p1x, p2x) ||
+			Math.max(p1x, p2x) < Math.min(p3x, p4x) ||
+			Math.max(p3y, p4y) < Math.min(p1y, p2y) ||
+			Math.max(p1y, p2y) < Math.min(p3y, p4y));
 	}
-	
+
 	return true;
 }
 
-/**
- * Test whether point (px, py) is in the circumcircle of the triangle formed by
- * (ax, ay), (bx, by), and (cx, cy).
- *
- * @name Constrainautor.inCircle
- * @source npm:delaunator
- * @param {number} ax The x coordinate of triangle point a.
- * @param {number} ay The y coordinate of triangle point a.
- * @param {number} bx The x coordinate of triangle point b.
- * @param {number} by The y coordinate of triangle point b.
- * @param {number} cx The x coordinate of triangle point c.
- * @param {number} cy The y coordinate of triangle point c.
- * @param {number} px The x coordinate of the point to test.
- * @param {number} py The y coordinate of the point to test.
- * @return {boolean} True if it's in the circumcircle.
- */
-function inCircle(ax, ay, bx, by, cx, cy, px, py) {
-	const dx = ax - px,
-		dy = ay - py,
-		ex = bx - px,
-		ey = by - py,
-		fx = cx - px,
-		fy = cy - py,
-	
-		ap = dx * dx + dy * dy,
-		bp = ex * ex + ey * ey,
-		cp = fx * fx + fy * fy;
-	
-	return dx * (ey * cp - bp * fy) -
-		dy * (ex * cp - bp * fx) +
-		ap * (ex * fy - ey * fx) < 0;
-}
-
-/**
- * Distance between a point and the nearest point to it on a segment, squared.
- *
- * @source https://stackoverflow.com/a/6853926
- * @param {number} x1 The segment point 1 x-coordinate.
- * @param {number} y1 The segment point 1 y-coordinate.
- * @param {number} x2 The segment point 2 x-coordinate.
- * @param {number} y2 The segment point 2 y-coordinate.
- * @param {number} x The point x-coordinate.
- * @param {number} y The point y-coordinate.
- * @return {number} The distance squared.
- */
-function segPointDistSq(x1, y1, x2, y2, x, y){
-	const A = x - x1,
-		B = y - y1,
-		C = x2 - x1,
-		D = y2 - y1,
-
-		dot = A * C + B * D,
-		lenSq = C * C + D * D,
-		param = lenSq === 0 ? -1 : dot / lenSq;
-
-	let xx, yy;
-
-	if(param < 0){
-		xx = x1;
-		yy = y1;
-	}else if(param > 1){
-		xx = x2;
-		yy = y2;
-	}else{
-		xx = x1 + param * C;
-		yy = y1 + param * D;
-	}
-
-	const dx = x - xx,
-		dy = y - yy;
-	return dx * dx + dy * dy;
-}
-
-Constrainautor.EPSILON = EPSILON;
 Constrainautor.IGND = IGND;
 Constrainautor.FLIPD = FLIPD;
 Constrainautor.CONSD = CONSD;
 
 Constrainautor.intersectSegments = intersectSegments;
-Constrainautor.inCircle = inCircle;
-Constrainautor.segPointDistSq = segPointDistSq;
 
 export default Constrainautor;

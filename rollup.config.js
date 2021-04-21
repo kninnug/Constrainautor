@@ -1,4 +1,5 @@
 import {terser} from 'rollup-plugin-terser';
+import resolve from '@rollup/plugin-node-resolve';
 
 function config(name){
 	return [
@@ -8,7 +9,8 @@ function config(name){
 				name,
 				format: 'umd',
 				file: name + '.js'
-			}
+			},
+			plugins: [resolve()]
 		},
 		{
 			input: name + '.mjs',
@@ -17,7 +19,7 @@ function config(name){
 				format: 'umd',
 				file: name + '.min.js'
 			},
-			plugins: [terser()]
+			plugins: [resolve(), terser()]
 		}
 	];
 }
