@@ -192,7 +192,7 @@ class Constrainautor {
 	 *
 	 * @param {boolean} force Check all non-constrained edges, not just those
 	 *        that were recently flipped.
-	 * @return {object} The triangulation object.
+	 * @return {Delaunator} The triangulation object.
 	 */
 	delaunify(force = false){
 		const del = this.del,
@@ -231,7 +231,7 @@ class Constrainautor {
 	 * @param {array:array:number} edges The edges to constrain: each element is
 	 *        an array with [p1, p2] which are indices into the points array 
 	 *        originally supplied to Delaunator.
-	 * @return {object} The triangulation object.
+	 * @return {Delaunator} The triangulation object.
 	 */
 	constrainAll(edges){
 		const len = edges.length;
@@ -241,6 +241,16 @@ class Constrainautor {
 		}
 		
 		return this.delaunify();
+	}
+	
+	/**
+	 * Whether an edge is a constrained edge.
+	 *
+	 * @param {number} edg The edge id.
+	 * @return {boolean} True if the edge is constrained.
+	 */
+	isConstrained(edg){
+		return this.flips[edg] === CONSD;
 	}
 	
 	/**

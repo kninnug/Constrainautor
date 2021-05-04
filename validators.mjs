@@ -246,7 +246,7 @@ function validateFlips(t, con, clear = true){
 			continue;
 		}
 		
-		if(flp !== con.flips[adj]){
+		if(flp !== con.flips[adj] || con.isConstrained(edg) !== con.isConstrained(adj)){
 			t.fail("flip status inconsistent");
 		}
 	}
@@ -313,10 +313,10 @@ function validateConstraint(t, points, con, ret, [p1, p2]){
 	
 	t.assert(found !== -1 || foundAdj !== -1, "constrained edge in triangulation");
 	if(found !== -1){
-		t.equal(con.flips[found], Constrainautor.CONSD, "constrained edge marked");
+		t.assert(con.isConstrained(found), "constrained edge marked");
 	}
 	if(foundAdj !== -1){
-		t.equal(con.flips[foundAdj], Constrainautor.CONSD, "reverse constrained edge marked");
+		t.assert(con.isConstrained(foundAdj), "reverse constrained edge marked");
 	}
 }
 

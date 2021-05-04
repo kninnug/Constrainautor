@@ -52,10 +52,10 @@ or minified:
 
 The Constrainautor library does not depend on Delaunator itself, but the input
 is expected to be in the format that Delaunator outputs. The ES module variant
-(`Constrainautor.mjs`) depends on [robust-predicates](https://www.npmjs.com/package/robust-predicates),
-but the browser and minified versions (`Constrainautor.js` and
-`Constrainautor.min.js`) come with this dependency compiled in, and can be used
-standalone.
+(`Constrainautor.mjs`) depends on
+[robust-predicates](https://www.npmjs.com/package/robust-predicates), but the
+browser and minified versions (`Constrainautor.js` and `Constrainautor.min.js`)
+come with this dependency compiled in, and can be used standalone.
 
 Usage
 -----
@@ -129,6 +129,13 @@ A shortcut to constraining an array of edges by `constrainOne` and calling
 indices into the `points` array originally supplied to Delaunator, i.e:
 `[[p1, p2], [p3, p4], ...]`. Returns the updated `del` object.
 
+#### con.isConstrained(edg)
+
+Whether the half-edge with the given id is a constraint edge. Returns true if
+`edg` (or `-edg`) was earlier returned by a call to `constrainOne`. Note: this
+doesn't try to detect if the edge must be a constraint, merely that it has been
+marked as such by the `Constrainautor` instance.
+
 Details
 -------
 
@@ -149,8 +156,9 @@ keeping track of an unbounded list of flipped edges. Rather, it sets `flips` to
 1 at the index of each newly created edge, which `delaunify` iterates over to
 check and restore the Delaunay condition.
 
-The library uses robust geometric predicates from [robust-predicates](https://github.com/mourner/robust-predicates)
-and [robust-segment-intersect](https://github.com/mikolalysenko/robust-segment-intersect),
+The library uses robust geometric predicates from
+[robust-predicates](https://github.com/mourner/robust-predicates) and
+[robust-segment-intersect](https://github.com/mikolalysenko/robust-segment-intersect),
 and should not break on smallish inputs. This can be changed by extending the
 class and overriding the `intersectSegments`, `inCircle`, and `isCollinear`
 methods. See the comments in `Constrainautor.mjs` on how they should behave.
