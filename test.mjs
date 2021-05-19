@@ -1,7 +1,7 @@
 import tape from 'tape';
 import Constrainautor from './Constrainautor.mjs';
 import Delaunator from 'delaunator';
-import {validateDelaunator, validateVertMap, validateConstraint, validateFlips} from './validators.mjs';
+import {validateDelaunator, validateVertMap, validateConstraint, validateFlips, validateAllConstraints} from './validators.mjs';
 import {loadTests} from './delaunaytests/loader.mjs';
 	
 const testFiles = loadTests(true);
@@ -52,6 +52,11 @@ function testFile(t, test){
 	t.comment(`deep delaunify`);
 	con.delaunify(true);
 	validateFlips(t, con, true);
+	
+	if(!error){
+		t.comment(`post delaunify constraints`);
+		validateAllConstraints(t, points, edges, con);
+	}
 	
 	t.end();
 }

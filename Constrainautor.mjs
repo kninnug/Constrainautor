@@ -194,22 +194,21 @@ class Constrainautor {
 	 */
 	delaunify(deep = false){
 		const del = this.del,
-			flips = this.flips,
-			len = flips.length;
+			len = this.flips.length;
 		
 		do{
 			var flipped = 0; /* actual valid use of var: scoped outside the loop */
 			for(let edg = 0; edg < len; edg++){
-				const adj = del.halfedges[edg];
-				if(adj === -1 || flips[edg] === CONSD){
+				if(this.flips[edg] !== FLIPD){
 					continue;
 				}
-				
-				if(flips[edg] !== FLIPD){
-					continue;
-				}
-				
 				this.flips[edg] = IGND;
+				
+				const adj = del.halfedges[edg];
+				if(adj === -1){
+					continue;
+				}
+				
 				this.flips[adj] = IGND;
 				if(!this.isDelaunay(edg)){
 					this.flipDiagonal(edg);
@@ -269,6 +268,25 @@ class Constrainautor {
 	}
 	
 	/**
+	 * Mark an edge as flipped, unless it is already marked as constrained.
+	 *
+	 * @private
+	 * @param {number} edg The edge id.
+	 * @return {boolean} True if edg was not constrained.
+	 */
+	markFlip(edg){
+		if(this.flips[edg] === CONSD){
+			return false;
+		}
+		const adj = this.del.halfedges[edg];
+		if(adj !== -1){
+			this.flips[adj] = FLIPD;
+			this.flips[edg] = FLIPD;
+		}
+		return true;
+	}
+	
+	/**
 	 * Flip the edge shared by two triangles.
 	 *
 	 * @private
@@ -278,7 +296,7 @@ class Constrainautor {
 	 */
 	flipDiagonal(edg){
 		// Flip a diagonal
-		//                top                     edg  
+		//                top                     edg
 		//          o  <----- o            o <------  o 
 		//         | ^ \      ^           |       ^ / ^
 		//      lft|  \ \     |        lft|      / /  |
@@ -287,7 +305,7 @@ class Constrainautor {
 		//         |     \ \  |rgt        |   / /     |rgt
 		//         v      \ v |           v  / v      |
 		//         o ----->  o            o   ------> o 
-		//           bot                     adj    
+		//           bot                     adj
 		const del = this.del,
 			adj = del.halfedges[edg],
 			bot = prevEdge(edg),
@@ -305,36 +323,24 @@ class Constrainautor {
 		
 		del.triangles[edg] = del.triangles[top];
 		del.halfedges[edg] = adjTop;
+		this.flips[edg] = this.flips[top];
 		if(adjTop !== -1){
-			this.flips[edg] = FLIPD;
-			this.flips[adjTop] = FLIPD;
 			del.halfedges[adjTop] = edg;
-		}else{
-			this.flips[edg] = IGND;
 		}
 		del.halfedges[bot] = top;
 		
-		if(adjLft !== -1){
-			this.flips[lft] = FLIPD;
-			this.flips[adjLft] = FLIPD;
-		}
-		
 		del.triangles[adj] = del.triangles[bot];
 		del.halfedges[adj] = adjBot;
+		this.flips[adj] = this.flips[bot];
 		if(adjBot !== -1){
-			this.flips[adj] = FLIPD;
-			this.flips[adjBot] = FLIPD;
 			del.halfedges[adjBot] = adj;
-		}else{
-			this.flips[adj] = IGND;
 		}
 		del.halfedges[top] = bot;
 		
-		if(adjRgt !== -1){
-			this.flips[rgt] = FLIPD;
-			this.flips[adjRgt] = FLIPD;
-		}
-		
+		this.markFlip(edg);
+		this.markFlip(lft);
+		this.markFlip(adj);
+		this.markFlip(rgt);
 		this.flips[bot] = FLIPD;
 		this.flips[top] = FLIPD;
 		

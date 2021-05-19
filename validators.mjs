@@ -244,6 +244,8 @@ function validateVertMap(t, points, con){
  *
  * @param {tape.Test} t The tape test argument.
  * @param {Constrainautor} con The constrainautor.
+ * @param {array:number} edges The edge ids of constraint edges, as returned by
+ *        constrainOne.
  * @param {boolean} clear If `true`, disallow FLIPD values.
  */
 function validateFlips(t, con, clear = true){
@@ -371,7 +373,7 @@ function validateConstraint(t, points, con, ret, p1, p2){
 			[x4, y4] = points[e2];
 		
 		if(robustIntersect([x1, y1], [x2, y2], [x3, y3], [x4, y4])){
-			t.fail(`edge ${edg} intersects constrained edge ${ret}`);
+			t.fail(`edge ${edg} intersects constrained edge ${p1} -> ${p2}`);
 			failed = true;
 		}
 	}
@@ -393,10 +395,17 @@ function validateConstraint(t, points, con, ret, p1, p2){
 	return failed;
 }
 
+function validateAllConstraints(t, points, edges, con){
+	for(const [p1, p2] of edges){
+		validateConstraint(t, points, con, undefined, p1, p2);
+	}
+}
+
 export {
 	validateDelaunator,
 	validateVertMap,
 	validateConstraint,
 	validateFlips,
+	validateAllConstraints,
 	SetMap
 };
