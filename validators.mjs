@@ -1,23 +1,27 @@
 import Constrainautor from './Constrainautor.mjs';
 import robustIntersect from 'robust-segment-intersect';
+import {incircle as incircleRobust, orient2d} from 'robust-predicates';
 
-class RobustConstrainautor extends Constrainautor {
-	intersectSegments(p1, p2, p3, p4){
-		// ignore when the segments share an end-point
-		if(p1 === p3 || p1 === p4 || p2 === p3 || p2 === p4){
-			return false;
-		}
-		
-		const pts = this.del.coords;
-		
-		return robustIntersect(
-			[pts[p1 * 2], pts[p1 * 2 + 1]],
-			[pts[p2 * 2], pts[p2 * 2 + 1]],
-			[pts[p3 * 2], pts[p3 * 2 + 1]],
-			[pts[p4 * 2], pts[p4 * 2 + 1]]
-		);
-	}
+function incircleSloppy(ax, ay, bx, by, cx, cy, px, py) {
+	const dx = ax - px;
+	const dy = ay - py;
+	const ex = bx - px;
+	const ey = by - py;
+	const fx = cx - px;
+	const fy = cy - py;
+
+	const ap = dx * dx + dy * dy;
+	const bp = ex * ex + ey * ey;
+	const cp = fx * fx + fy * fy;
+
+	return dx * (ey * cp - bp * fy) -
+		dy * (ex * cp - bp * fx) +
+		ap * (ex * fy - ey * fx) < 0;
 }
+
+// Delaunator creates not-completely-Delaunay triangles from smallish inputs,
+// so use a sloppy in-circle test.
+const incircle = incircleSloppy;
 
 /**
  * Maps keys to sets of values.
@@ -83,15 +87,17 @@ class SetMap extends Map {
  * @param {Delaunator} del The Delaunator output.
  */
 function validateDelaunator(t, points, del){
+	let failed = false;
 	// validate halfedges
-	for(let edg = 0; edg < del.halfedges.length; edg++){
+	for(let edg = 0; edg < del.triangles.length; edg++){
 		const adj = del.halfedges[edg];
 		if(adj === -1){
 			continue;
 		}
 		
 		if(del.halfedges[adj] !== edg){
-			t.fail("invalid halfedge connection");
+			t.fail(`invalid halfedge connection: ${edg} -> ${adj} != ${del.halfedges[adj]} -> ${edg}`);
+			failed = true;
 		}
 		
 		const e1 = del.triangles[edg],
@@ -100,20 +106,26 @@ function validateDelaunator(t, points, del){
 			a2 = del.triangles[nextEdge(adj)];
 		
 		if(e1 !== a2 && e2 !== a1){
-			t.fail("halfedges do not share end-points");
+			t.fail(`halfedges ${edg}/${adj} do not share end-points (${e1}, ${e2}) / (${a2}, ${a1})`);
+			failed = true;
 		}
 	}
-	t.pass("halfedges are valid");
 
 	// validate triangulation
-	const hullAreas = [];
-	for(let i = 0, len = del.hull.length, j = len - 1; i < len; j = i++){
+	const hullAreas = [],
+		hulLen = del.hull.length;
+	for(let i = 0, j = hulLen - 1; i < hulLen; j = i++){
 		const [x0, y0] = points[del.hull[j]];
 		const [x, y] = points[del.hull[i]];
 		hullAreas.push((x - x0) * (y + y0));
-		const c = convex(points[del.hull[j]], points[del.hull[(j + 1) % del.hull.length]],  points[del.hull[(j + 3) % del.hull.length]]);
+		const c = convex(
+			points[del.hull[j]],
+			points[del.hull[(j + 1) % del.hull.length]],
+			points[del.hull[(j + 3) % del.hull.length]]
+		);
 		if(!c){
 			t.fail(`hull is not convex at ${j}`);
+			failed = true;
 		}
 	}
 	const hullArea = sum(hullAreas);
@@ -128,21 +140,19 @@ function validateDelaunator(t, points, del){
 	const trianglesArea = sum(triangleAreas);
 
 	const err = Math.abs((hullArea - trianglesArea) / hullArea);
-	if(err <= Math.pow(2, -51)){
-		t.pass(`triangulation is valid: ${err} error`);
-	}else{
+	if(err > Math.pow(2, -51)){
 		t.fail(`triangulation is broken: ${err} error`);
+		failed = true;
 	}
-}
-
-function orient([px, py], [rx, ry], [qx, qy]){
-	const l = (ry - py) * (qx - px);
-	const r = (rx - px) * (qy - py);
-	return Math.abs(l - r) >= 3.3306690738754716e-16 * Math.abs(l + r) ? l - r : 0;
+	
+	t.assert(!failed, `triangulation is valid`);
+	return failed;
 }
 
 function convex(r, q, p){
-	return (orient(p, r, q) || orient(r, q, p) || orient(q, p, r)) >= 0;
+	return (orient2d(...p, ...r, ...q) ||
+			orient2d(...r, ...q, ...p) ||
+			orient2d(...q, ...p, ...r)) >= 0;
 }
 
 // Kahan and Babuska summation, Neumaier variant; accumulates less FP error
@@ -176,6 +186,7 @@ function validateVertMap(t, points, con){
 		numPoints = points.length,
 		numEdges = del.triangles.length,
 		edgeMap = new SetMap;
+	let failed = false;
 	
 	for(let edg = 0; edg < numEdges; edg++){
 		const adj = del.halfedges[edg],
@@ -190,14 +201,16 @@ function validateVertMap(t, points, con){
 	for(let i = 0; i < numPoints; i++){
 		const inc = edgeMap.get(i);
 		if(!inc){
-			t.fail("point has no incoming edges");
+			//t.fail("point has no incoming edges");
+			continue;
 		}
 		
 		const start = con.vertMap[i];
 		let edg = start;
 		do{
 			if(!inc.has(edg)){
-				t.fail("edge incorrectly marked as incoming to point");
+				t.fail(`edge ${edg} incorrectly marked as incoming to point ${i}`);
+				failed = true;
 			}
 			
 			inc.delete(edg);
@@ -207,14 +220,19 @@ function validateVertMap(t, points, con){
 		}while(edg !== -1 && edg !== start);
 		
 		if(inc.size){
-			t.fail("edges missed while walking around point");
+			t.fail(`edges missed while walking around point: ${i}: ${inc}`);
+			failed = true;
 		}
 		edgeMap.delete(i);
 	}
 	
 	if(edgeMap.size){
-		t.fail("invalid points in edge map");
+		t.fail(`invalid points in edge map: ${edgeMap}`);
+		failed = true;
 	}
+	
+	t.assert(!failed, `vertMap is valid`);
+	return failed;
 }
 
 /**
@@ -222,6 +240,7 @@ function validateVertMap(t, points, con){
  * - All entries have either the IGND, CONSD, or FLIPD value, and no other.
  * - Linked half-edges have the same flip value.
  * - If requested, FLIPD values were cleared by delaunify.
+ * - Non-constrained edges are Delaunay.
  *
  * @param {tape.Test} t The tape test argument.
  * @param {Constrainautor} con The constrainautor.
@@ -229,17 +248,21 @@ function validateVertMap(t, points, con){
  */
 function validateFlips(t, con, clear = true){
 	const del = con.del,
+		pts = del.coords,
 		numEdges = del.triangles.length;
+	let failed = false;
 	
 	for(let edg = 0; edg < numEdges; edg++){
 		const flp = con.flips[edg],
 			adj = del.halfedges[edg];
 		
 		if(flp !== Constrainautor.IGND && flp !== Constrainautor.CONSD && flp !== Constrainautor.FLIPD){
-			t.fail("invalid flip value");
+			t.fail(`invalid flip value for ${edg}/${adj}: ${flp}`);
+			failed = true;
 		}
 		if(clear && flp !== Constrainautor.CONSD && flp !== Constrainautor.IGND){
-			t.fail("flip not cleared");
+			t.fail(`flip not cleared for ${edg}/${adj}: ${flp}`);
+			failed = true;
 		}
 		
 		if(adj === -1){
@@ -247,9 +270,47 @@ function validateFlips(t, con, clear = true){
 		}
 		
 		if(flp !== con.flips[adj] || con.isConstrained(edg) !== con.isConstrained(adj)){
-			t.fail("flip status inconsistent");
+			t.fail(`flip status inconsistent for ${edg}/${adj}: ${flp}/${con.flips[adj]}`);
+			failed = true;
+		}
+		
+		if(con.isConstrained(edg) || !clear){
+			continue;
+		}
+		
+		/*
+		 *         e2/a1
+		 *           o 
+		 *         / | \
+		 *        /  |  \
+		 *       /   |   \
+		 *      /    |    \
+		 *  e3 o edg | adj o a3
+		 *      \    |    /
+		 *       \   |   /
+		 *        \  |  /
+		 *         \ | /
+		 *           o 
+		 *         e1/a2
+		 */
+		const e1 = del.triangles[edg],
+			e2 = del.triangles[nextEdge(edg)],
+			e3 = del.triangles[nextEdge(nextEdge(edg))],
+			a3 = del.triangles[nextEdge(nextEdge(adj))],
+			p1x = pts[e1 * 2], p1y = pts[e1 * 2 + 1],
+			p2x = pts[e2 * 2], p2y = pts[e2 * 2 + 1],
+			p3x = pts[e3 * 2], p3y = pts[e3 * 2 + 1],
+			p4x = pts[a3 * 2], p4y = pts[a3 * 2 + 1];
+		
+		const isD = incircle(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y);
+		if(isD < 0){
+			t.fail(`triangles shared by ${edg}/${adj} not Delaunay (${isD})`);
+			failed = true;
 		}
 	}
+	
+	t.assert(!failed, `flips array is valid`);
+	return failed;
 }
 
 /**
@@ -267,16 +328,18 @@ function validateFlips(t, con, clear = true){
  * @param {number} p1 The index of point 1.
  * @param {number} p2 The index of point 2.
  */
-function validateConstraint(t, points, con, ret, [p1, p2]){
+function validateConstraint(t, points, con, ret, p1, p2){
 	const del = con.del,
 		numEdges = del.triangles.length,
 		[x1, y1] = points[p1],
 		[x2, y2] = points[p2],
 		re1 = ret < 0 ? del.triangles[nextEdge(-ret)] : del.triangles[ret],
 		re2 = ret < 0 ? del.triangles[-ret] : del.triangles[nextEdge(ret)];
+	let failed = false;
 	
-	if(ret !== undefined){
-		t.assert(re1 === p1 && re2 === p2, "valid edge returned from constrainOne");
+	if(ret !== undefined && (re1 !== p1 || re2 !== p2)){
+		t.fail(`invalid edge returned from constrainOne: ${ret}: ${p1} -> ${p2} === ${re1} -> ${re2}`);
+		failed = true;
 	}
 	
 	let found = -1,
@@ -288,12 +351,14 @@ function validateConstraint(t, points, con, ret, [p1, p2]){
 		
 		if(e1 === p1 && e2 === p2){
 			if(found !== -1){
-				t.fail("duplicate of constrained edge");
+				t.fail(`edge ${edg} is duplicate of constraint`);
+				failed = true;
 			}
 			found = edg;
 		}else if(e1 === p2 && e2 === p1){
 			if(foundAdj !== -1){
-				t.fail("duplicate of constrained edge in reverse");
+				t.fail(`edge ${edg} is reversed duplicate of constraint`);
+				failed = true;
 			}
 			foundAdj = edg;
 		}
@@ -305,19 +370,27 @@ function validateConstraint(t, points, con, ret, [p1, p2]){
 		const [x3, y3] = points[e1],
 			[x4, y4] = points[e2];
 		
-		//if(Constrainautor.intersectSegments(x1, y1, x2, y2, x3, y3, x4, y4)){
 		if(robustIntersect([x1, y1], [x2, y2], [x3, y3], [x4, y4])){
-			t.fail("edge intersects constrained edge");
+			t.fail(`edge ${edg} intersects constrained edge ${ret}`);
+			failed = true;
 		}
 	}
 	
-	t.assert(found !== -1 || foundAdj !== -1, "constrained edge in triangulation");
-	if(found !== -1){
-		t.assert(con.isConstrained(found), "constrained edge marked");
+	if(found === -1 && foundAdj === -1){
+		t.fail(`constrained edge not in triangulation`);
+		failed = true;
 	}
-	if(foundAdj !== -1){
-		t.assert(con.isConstrained(foundAdj), "reverse constrained edge marked");
+	if(found !== -1 && !con.isConstrained(found)){
+		t.fail(`constrained edge not marked`);
+		failed = true;
 	}
+	if(foundAdj !== -1 && !con.isConstrained(foundAdj)){
+		t.fail(`reverse constrained edge not marked`);
+		failed = true;
+	}
+	
+	t.assert(!failed, `constraint ${p1} -> ${p2}: ${ret} is valid`);
+	return failed;
 }
 
 export {
@@ -325,6 +398,5 @@ export {
 	validateVertMap,
 	validateConstraint,
 	validateFlips,
-	SetMap,
-	RobustConstrainautor
+	SetMap
 };

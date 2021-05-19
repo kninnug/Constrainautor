@@ -157,9 +157,7 @@ class Constrainautor {
 				continue;
 			}
 			
-			const flp = this.flipDiagonal(edg);
-			this.flips[flp] = FLIPD;
-			this.flips[del.halfedges[flp]] = FLIPD;
+			this.flipDiagonal(edg);
 			
 			// The new edge might still intersect, which will be fixed in the
 			// next rescan.
@@ -190,37 +188,35 @@ class Constrainautor {
 	/**
 	 * Fix the Delaunay condition after constraining edges.
 	 *
-	 * @param {boolean} force Check all non-constrained edges, not just those
-	 *        that were recently flipped.
+	 * @param {boolean} deep If true, keep checking & flipping edges until all
+	 *        edges are Delaunay, otherwise only check the edges once.
 	 * @return {Delaunator} The triangulation object.
 	 */
-	delaunify(force = false){
+	delaunify(deep = false){
 		const del = this.del,
 			flips = this.flips,
 			len = flips.length;
-		for(let edg = 0; edg < len; edg++){
-			const adj = del.halfedges[edg];
-			if(adj === -1){
-				continue;
-			}
-			
-			if(force){
-				if(flips[edg] === CONSD || flips[adj] === CONSD){
+		
+		do{
+			var flipped = 0; /* actual valid use of var: scoped outside the loop */
+			for(let edg = 0; edg < len; edg++){
+				const adj = del.halfedges[edg];
+				if(adj === -1 || flips[edg] === CONSD){
 					continue;
 				}
-			}else if(flips[edg] !== FLIPD || flips[adj] !== FLIPD){
-				continue;
-			}
-			
-			if(!this.isDelaunay(edg)){
-				const flp = this.flipDiagonal(edg);
-				this.flips[flp] = IGND;
-				this.flips[del.halfedges[flp]] = IGND;
-			}else{
+				
+				if(flips[edg] !== FLIPD){
+					continue;
+				}
+				
 				this.flips[edg] = IGND;
 				this.flips[adj] = IGND;
+				if(!this.isDelaunay(edg)){
+					this.flipDiagonal(edg);
+					flipped++;
+				}
 			}
-		}
+		}while(deep && flipped > 0);
 		
 		return this.del;
 	}
@@ -240,7 +236,7 @@ class Constrainautor {
 			this.constrainOne(e[0], e[1]);
 		}
 		
-		return this.delaunify();
+		return this.delaunify(true);
 	}
 	
 	/**
@@ -283,14 +279,14 @@ class Constrainautor {
 	flipDiagonal(edg){
 		// Flip a diagonal
 		//                top                     edg  
-		//          o  <----- o            o <------- o 
+		//          o  <----- o            o <------  o 
 		//         | ^ \      ^           |       ^ / ^
 		//      lft|  \ \     |        lft|      / /  |
 		//         |   \ \adj |           |  bot/ /   |
 		//         | edg\ \   |           |    / /top |
 		//         |     \ \  |rgt        |   / /     |rgt
 		//         v      \ v |           v  / v      |
-		//         o ----->  o            o  -------> o 
+		//         o ----->  o            o   ------> o 
 		//           bot                     adj    
 		const del = this.del,
 			adj = del.halfedges[edg],
@@ -299,7 +295,9 @@ class Constrainautor {
 			top = prevEdge(adj),
 			rgt = nextEdge(adj),
 			adjBot = del.halfedges[bot],
-			adjTop = del.halfedges[top];
+			adjTop = del.halfedges[top],
+			adjLft = del.halfedges[lft],
+			adjRgt = del.halfedges[rgt];
 		
 		if(this.flips[edg] === CONSD || this.flips[adj] === CONSD){
 			throw new Error("Trying to flip a constrained edge");
@@ -308,27 +306,42 @@ class Constrainautor {
 		del.triangles[edg] = del.triangles[top];
 		del.halfedges[edg] = adjTop;
 		if(adjTop !== -1){
+			this.flips[edg] = FLIPD;
+			this.flips[adjTop] = FLIPD;
 			del.halfedges[adjTop] = edg;
-			this.flips[edg] = this.flips[adjTop];
+		}else{
+			this.flips[edg] = IGND;
 		}
 		del.halfedges[bot] = top;
+		
+		if(adjLft !== -1){
+			this.flips[lft] = FLIPD;
+			this.flips[adjLft] = FLIPD;
+		}
 		
 		del.triangles[adj] = del.triangles[bot];
 		del.halfedges[adj] = adjBot;
 		if(adjBot !== -1){
+			this.flips[adj] = FLIPD;
+			this.flips[adjBot] = FLIPD;
 			del.halfedges[adjBot] = adj;
-			this.flips[adj] = this.flips[adjBot];
+		}else{
+			this.flips[adj] = IGND;
 		}
 		del.halfedges[top] = bot;
 		
-		// Update vertex->edge map
+		if(adjRgt !== -1){
+			this.flips[rgt] = FLIPD;
+			this.flips[adjRgt] = FLIPD;
+		}
+		
+		this.flips[bot] = FLIPD;
+		this.flips[top] = FLIPD;
+		
 		this.updateVert(edg);
 		this.updateVert(lft);
 		this.updateVert(adj);
 		this.updateVert(rgt);
-		
-		this.flips[edg] = this.flips[top];
-		this.flips[adj] = this.flips[bot];
 		
 		return bot;
 	}
@@ -392,6 +405,7 @@ class Constrainautor {
 	 * segments share an end-point (e.g. p1 == p3 etc.), they are not considered
 	 * intersecting.
 	 *
+	 * @private
 	 * @param {number} p1 The index of point 1 into this.del.coords.
 	 * @param {number} p2 The index of point 2 into this.del.coords.
 	 * @param {number} p3 The index of point 3 into this.del.coords.
@@ -423,7 +437,7 @@ class Constrainautor {
 	 * @param {number} p2 The index of point 2 into this.del.coords.
 	 * @param {number} p3 The index of point 3 into this.del.coords.
 	 * @param {number} px The index of point x into this.del.coords.
-	 * @return {boolean} True if px is in the circumcircle.
+	 * @return {boolean} True if (px, py) is in the circumcircle.
 	 */
 	inCircle(p1, p2, p3, px){
 		const pts = this.del.coords;
@@ -432,12 +446,13 @@ class Constrainautor {
 			pts[p2 * 2], pts[p2 * 2 + 1],
 			pts[p3 * 2], pts[p3 * 2 + 1],
 			pts[px * 2], pts[px * 2 + 1]
-		) <= 0.0;
+		) < 0.0;
 	}
 	
 	/**
 	 * Whether point p1, p2, and p are collinear.
 	 *
+	 * @private
 	 * @param {number} p1 The index of segment point 1 into this.del.coords.
 	 * @param {number} p2 The index of segment point 2 into this.del.coords.
 	 * @param {number} p The index of the point p into this.del.coords.

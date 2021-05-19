@@ -1,16 +1,17 @@
-import fs from 'fs';
 import tape from 'tape';
 import Constrainautor from './Constrainautor.mjs';
 import Delaunator from 'delaunator';
-import {validateDelaunator, validateVertMap, validateConstraint, validateFlips, RobustConstrainautor} from './validators.mjs';
-
-function testFile(t, json, impl = Constrainautor){
-	const points = json.points,
-		edges = json.edges,
-		error = json.error,
-		del = Delaunator.from(points),
-		con = new (impl)(del);
+import {validateDelaunator, validateVertMap, validateConstraint, validateFlips} from './validators.mjs';
+import {loadTests} from './delaunaytests/loader.mjs';
 	
+const testFiles = loadTests(true);
+
+function testFile(t, test){
+	const {points, edges, error} = test,
+		del = Delaunator.from(points),
+		con = new Constrainautor(del);
+	
+	t.comment(`pre-constrainment`);
 	validateDelaunator(t, points, con.del);
 	validateVertMap(t, points, con);
 	validateFlips(t, con, true);
@@ -28,7 +29,7 @@ function testFile(t, json, impl = Constrainautor){
 		}
 		
 		if(ret !== undefined){
-			validateConstraint(t, points, con, ret, [p1, p2]);
+			validateConstraint(t, points, con, ret, p1, p2);
 		}
 	}
 	
@@ -38,11 +39,18 @@ function testFile(t, json, impl = Constrainautor){
 		t.assert(!caught, "did not throw");
 	}
 	
+	t.comment(`post-constrainment, pre-delaunify`);
 	// The internal structures must be consistent, even in case of an error
 	validateDelaunator(t, points, con.del);
 	validateVertMap(t, points, con);
 	validateFlips(t, con, false);
+	
+	t.comment(`shallow delaunify`);
 	con.delaunify();
+	validateFlips(t, con, false);
+	
+	t.comment(`deep delaunify`);
+	con.delaunify(true);
 	validateFlips(t, con, true);
 	
 	t.end();
@@ -70,35 +78,21 @@ function testExample(t){
 	
 	con.constrainAll([[0, 2]]);
 	
-	validateConstraint(t, points, con, undefined, [0, 2]);
+	validateConstraint(t, points, con, undefined, 0, 2);
 	validateDelaunator(t, points, con.del);
 	validateVertMap(t, points, con);
 	validateFlips(t, con, true);
 	t.end();
 }
 
-function testIssue2(t){
-	const obj = JSON.parse(fs.readFileSync('./tests/issue2.json'), 'utf8');
-	obj.error = null;
-	return testFile(t, obj, RobustConstrainautor);
-}
-
-const files = fs.readdirSync('./tests/', 'utf8').map(f => './tests/' + f)
-		.concat(fs.readdirSync('./tests/ipa/', 'utf8').map(f => './tests/ipa/' + f))
-		.filter(f => f.endsWith('.json'));
-
 function main(args){
 	if(!args.length){
 		tape.test("Example", testExample);
 		tape.test("Constructor", testConstructor);
-		tape.test("issue #2", testIssue2);
 	}
-	
-	args = args.length ? args : files;
 
-	for(const file of args){
-		const json = JSON.parse(fs.readFileSync(file, 'utf8'));
-		tape.test(file, (t) => testFile(t, json));
+	for(const test of testFiles){
+		tape.test(test.name, (t) => testFile(t, test));
 	}
 }
 

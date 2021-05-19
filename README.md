@@ -114,13 +114,14 @@ indices into the `points` array originally supplied to the Delaunator. It
 returns the id of the half-edge that points from `p1` to `p2`, or the negative
 id of the half-edge that points from `p2` to `p1`.
 
-#### con.delaunify(force = false)
+#### con.delaunify(deep = false)
 
 After constraining edges, call this method to restore the Delaunay condition
 (for every two triangles sharing an edge, neither lies completely within the
 circumcircle of the other), for every edge that was flipped by `constrainOne`.
-If `force` is `true`, it will check & correct every non-constrained edge
-(regardless of whether it was touched by `constrainOne`).
+If `deep` is `true`, it will check & correct until all flipped edges satisfy
+the condition, otherwise it will do only one pass and some edges may still not
+be Delaunay.
 
 #### con.constrainAll(edges)
 
@@ -132,9 +133,9 @@ indices into the `points` array originally supplied to Delaunator, i.e:
 #### con.isConstrained(edg)
 
 Whether the half-edge with the given id is a constraint edge. Returns true if
-`edg` (or `-edg`) was earlier returned by a call to `constrainOne`. Note: this
-doesn't try to detect if the edge must be a constraint, merely that it has been
-marked as such by the `Constrainautor` instance.
+`edg` was earlier returned by a call to `constrainOne`. Note: this doesn't try
+to detect if the edge must be a constraint, merely that it has been marked as
+such by the `Constrainautor` instance.
 
 Details
 -------
@@ -162,12 +163,6 @@ The library uses robust geometric predicates from
 and should not break on smallish inputs. This can be changed by extending the
 class and overriding the `intersectSegments`, `inCircle`, and `isCollinear`
 methods. See the comments in `Constrainautor.mjs` on how they should behave.
-
-Known issues
-------------
-
-- `delaunify` might not restore the Delaunay condition for all triangle pairs
-  when that requires flipping edges more than once.
 
 Attributions
 ------------
