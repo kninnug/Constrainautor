@@ -1,6 +1,6 @@
 {
   "name": "@kninnug/constrainautor",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A small library for constraining a Delaunator triangulation",
   "main": "Constrainautor.min.js",
   "module": "Constrainautor.mjs",
