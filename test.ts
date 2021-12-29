@@ -1,12 +1,17 @@
 import tape from 'tape';
-import Constrainautor from './Constrainautor.mjs';
+import Constrainautor from './Constrainautor';
 import Delaunator from 'delaunator';
-import {validateDelaunator, validateVertMap, validateConstraint, validateFlips, validateAllConstraints} from './validators.mjs';
-import {loadTests} from './delaunaytests/loader.mjs';
-	
+import {validateDelaunator, validateVertMap, validateConstraint, validateFlips, validateAllConstraints, validateDelaunay} from './validators';
+import {loadTests} from './delaunaytests/loader';
+
+import type {Test} from 'tape';
+import type {TestFile} from './delaunaytests/loader';
+
 const testFiles = loadTests(true);
 
-function testFile(t, test){
+type P2 = [number, number];
+
+function testFile(t: Test, test: TestFile){
 	const {points, edges, error} = test,
 		del = Delaunator.from(points),
 		con = new Constrainautor(del);
@@ -15,17 +20,20 @@ function testFile(t, test){
 	validateDelaunator(t, points, con.del);
 	validateVertMap(t, points, con);
 	validateFlips(t, con, true);
+    // pre-delaunify since Delaunator may miss some edge cases
+    con.delaunify(true, true);
+    //validateDelaunay(t, con);
 	
-	let caught = null;
+	let caught: Error | null = null;
 	for(const [p1, p2] of edges){
-		let ret = undefined;
+		let ret: number | undefined = undefined;
 		try{
 			ret = con.constrainOne(p1, p2);
 		}catch(ex){
 			if(!error){
 				throw ex;
 			}
-			caught = ex;
+			caught = ex as Error;
 		}
 		
 		if(ret !== undefined){
@@ -52,6 +60,7 @@ function testFile(t, test){
 	t.comment(`deep delaunify`);
 	con.delaunify(true);
 	validateFlips(t, con, true);
+    validateDelaunay(t, con);
 	
 	if(!error){
 		t.comment(`post delaunify constraints`);
@@ -61,23 +70,30 @@ function testFile(t, test){
 	t.end();
 }
 
-function testConstructor(t){
+function testConstructor(t: Test){
+	// @ts-ignore
 	t.throws(() => new Constrainautor(), /Expected an object with Delaunator output/, "throws on no argument");
+	// @ts-ignore
 	t.throws(() => new Constrainautor({}), /Expected an object with Delaunator output/, "throws on empty object");
+	// @ts-ignore
 	t.throws(() => new Constrainautor({foo: 12}), /Expected an object with Delaunator output/, "throws on invalid object");
+	// @ts-ignore
 	t.throws(() => new Constrainautor({triangles: [1], halfedges: [1], coords: [1, 2]}),
 			/Delaunator output appears inconsistent/, "throws on inconsistent Delaunation");
+	// @ts-ignore
 	t.throws(() => new Constrainautor({triangles: [1, 2, 3], halfedges: [1], coords: [1, 2]}),
 			/Delaunator output appears inconsistent/, "throws on inconsistent Delaunation");
+	// @ts-ignore
 	t.throws(() => new Constrainautor({triangles: [1, 2, 3], halfedges: [0, 1, 2], coords: [1]}),
 			/Delaunator output appears inconsistent/, "throws on inconsistent Delaunation");
+	// @ts-ignore
 	t.throws(() => new Constrainautor({triangles: [], halfedges: [], coords: [1, 2]}),
 			/No edges in triangulation/, "throws on empty Delaunation");
 	t.end();
 }
 
-function testExample(t){
-	const points = [[150, 50], [50, 200], [150, 350], [250, 200]],
+function testExample(t: Test){
+	const points: P2[] = [[150, 50], [50, 200], [150, 350], [250, 200]],
 		del = Delaunator.from(points),
 		con = new Constrainautor(del);
 	
@@ -90,14 +106,14 @@ function testExample(t){
 	t.end();
 }
 
-function main(args){
+function main(args: string[]){
 	if(!args.length){
-		tape.test("Example", testExample);
-		tape.test("Constructor", testConstructor);
+		tape("Example", testExample);
+		tape("Constructor", testConstructor);
 	}
 
 	for(const test of testFiles){
-		tape.test(test.name, (t) => testFile(t, test));
+		tape(test.name, (t) => testFile(t, test));
 	}
 }
 

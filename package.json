@@ -2,23 +2,29 @@
   "name": "@kninnug/constrainautor",
   "version": "2.1.2",
   "description": "A small library for constraining a Delaunator triangulation",
-  "main": "Constrainautor.min.js",
-  "module": "Constrainautor.mjs",
+  "main": "./lib/Constrainautor.min.js",
+  "module": "./lib/Constrainautor.mjs",
   "exports": {
-    "import": "./Constrainautor.mjs",
-    "require": "./Constrainautor.js"
+    "import": "./lib/Constrainautor.mjs",
+    "require": "./lib/Constrainautor.cjs"
+  },
+  "types": "Constrainautor.ts",
+  "directories": {
+    "lib": "./lib/"
   },
   "files": [
-    "Constrainautor.mjs",
-    "Constrainautor.js",
-    "Constrainautor.min.js"
+    "Constrainautor.ts",
+    "lib/Constrainautor.mjs",
+    "lib/Constrainautor.cjs",
+    "lib/Constrainautor.js",
+    "lib/Constrainautor.min.js"
   ],
   "scripts": {
-    "test": "node testint.mjs && node test.mjs",
+    "test": "npm run build && node ./test/testint.mjs && node ./test/test.mjs",
     "build": "rollup -c",
-    "prepare": "npm run test && npm run build",
-    "clean": "rm -r ./coverage ./Constrainautor.js ./Constrainautor.min.js || true",
-    "bench": "node bench.mjs"
+    "prepare": "npm run build",
+    "clean": "rm -r ./coverage/ ./lib/ ./test/ || true",
+    "bench": "npm run build && node ./test/bench.mjs"
   },
   "keywords": [
     "constrained",
@@ -33,20 +39,25 @@
     "url": "git+https://github.com/kninnug/constrainautor.git"
   },
   "devDependencies": {
-    "@rollup/plugin-node-resolve": "^11.2.1",
+    "@rollup/plugin-commonjs": "^21.0.1",
+    "@rollup/plugin-node-resolve": "^13.1.1",
+    "@rollup/plugin-replace": "^3.0.0",
+    "@rollup/plugin-typescript": "^8.3.0",
+    "@types/delaunator": "^3.0.0",
+    "@types/tape": "^4.13.0",
     "cdt2d": "^1.0.0",
     "delaunator": "^5.0.0",
     "robust-segment-intersect": "^1.0.1",
+    "rollup": "^2.62.0",
     "rollup-plugin-terser": "^7.0.2",
-    "tape": "^5.2.2"
+    "tape": "^5.2.2",
+    "tslib": "^2.3.1",
+    "typescript": "^4.3.2"
   },
   "bugs": {
     "url": "https://github.com/kninnug/constrainautor/issues"
   },
   "homepage": "https://github.com/kninnug/constrainautor#readme",
-  "directories": {
-    "test": "tests"
-  },
   "dependencies": {
     "robust-predicates": "^3.0.1"
   }

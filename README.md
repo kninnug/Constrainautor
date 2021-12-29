@@ -44,18 +44,19 @@ or as an ECMAScript/ES6 module:
 
 or in the browser:
 
-	<script src="node_modules/@kninnug/constrainautor/Constrainautor.js"></script>
+	<script src="node_modules/@kninnug/constrainautor/lib/Constrainautor.js"></script>
 
 or minified:
 
-	<script src="node_modules/@kninnug/constrainautor/Constrainautor.min.js"></script>
+	<script src="node_modules/@kninnug/constrainautor/lib/Constrainautor.min.js"></script>
 
 The Constrainautor library does not depend on Delaunator itself, but the input
 is expected to be in the format that Delaunator outputs. The ES module variant
-(`Constrainautor.mjs`) depends on
+(`lib/Constrainautor.mjs`) depends on
 [robust-predicates](https://www.npmjs.com/package/robust-predicates), but the
-browser and minified versions (`Constrainautor.js` and `Constrainautor.min.js`)
-come with this dependency compiled in, and can be used standalone.
+CommonJS and minified versions (`lib/Constrainautor.cjs` and `lib/Constrainautor.min.js`)
+come with this dependency compiled in, and can be used standalone. The
+(original) TypeScript version is in `Constrainautor.ts`.
 
 Usage
 -----
@@ -114,14 +115,15 @@ indices into the `points` array originally supplied to the Delaunator. It
 returns the id of the half-edge that points from `p1` to `p2`, or the negative
 id of the half-edge that points from `p2` to `p1`.
 
-#### con.delaunify(deep = false)
+#### con.delaunify(deep = false, full = false)
 
 After constraining edges, call this method to restore the Delaunay condition
 (for every two triangles sharing an edge, neither lies completely within the
 circumcircle of the other), for every edge that was flipped by `constrainOne`.
 If `deep` is `true`, it will check & correct until all flipped edges satisfy
 the condition, otherwise it will do only one pass and some edges may still not
-be Delaunay.
+be Delaunay. If `full` is `true`, it will also check & correct edges that were
+not flipped before.
 
 #### con.constrainAll(edges)
 
@@ -164,10 +166,46 @@ and should not break on smallish inputs. This can be changed by extending the
 class and overriding the `intersectSegments`, `inCircle`, and `isCollinear`
 methods. See the comments in `Constrainautor.mjs` on how they should behave.
 
+Changes
+-------
+
+### 3.0.0
+- Convert to TypeScript.
+- Move built files to `lib/`.
+- Add `full` parameter to `delaunify`.
+- Fix Delaunay condition-check in validators.
+
+### 2.1.2
+- Fix disappearing constraints.
+
+### 2.1.1
+- Fix delaunify not restoring the Delaunay condition for all changed triangle 
+  pairs.
+- Move test files to separate repository (to share with other libraries).
+
+### 2.1.0
+- Add isConstrained convenience method.
+
+### 2.0.0
+- Fix issue [#2](https://github.com/kninnug/Constrainautor/issues/2) by
+  using [robust-predicates](https://github.com/mourner/robust-predicates).
+- Remove intersectSegments, inCircle, and segPointDistSq from the API
+  documentation.
+
+### 1.0.1
+- Add documentation for internal intersect methods, which can be overridden to
+  fix robustness issues.
+- Mitigate issue [#2](https://github.com/kninnug/Constrainautor/issues/2) by
+  throwing when constraining segment leaves the hull.
+- Add test files from [Interesting Polygon Archive](https://github.com/LingDong-/interesting-polygon-archive).
+
+### 1.0.0
+- Initial version
+
 Attributions
 ------------
 
-- The constraining algorithm is adapted from [A fast algorithm for generating constrained Delaunay triangulations](https://www.newcastle.edu.au/__data/assets/pdf_file/0019/22519/23_A-fast-algortithm-for-generating-constrained-Delaunay-triangulations.pdf), 1992, S. W. Sloan.
+- The constraining algorithm is adapted from [A fast algorithm for generating constrained Delaunay triangulations](https://web.archive.org/web/20210506140628if_/https://www.newcastle.edu.au/__data/assets/pdf_file/0019/22519/23_A-fast-algortithm-for-generating-constrained-Delaunay-triangulations.pdf), 1992, S. W. Sloan.
 - Uses Vladimir Agafonkin's [robust-predicates](https://github.com/mourner/robust-predicates) port
   of Jonathan Shewchuk's [Adaptive Precision Floating-Point Arithmetic and Fast Robust Predicates
   for Computational Geometry](http://www.cs.cmu.edu/~quake/robust.html).

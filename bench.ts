@@ -1,45 +1,41 @@
-import fs from 'fs';
 import Delaunator from 'delaunator';
-import Constrainautor from './Constrainautor.mjs';
+import Constrainautor from './Constrainautor';
 import cdt2d from 'cdt2d';
 import os from 'os';
-import {loadTests} from './delaunaytests/loader.mjs';
+import {loadTests} from './delaunaytests/loader';
 
 const COUNT = 100;
 
-function triangulateCdt2d(points, edges){
+type P2 = [number, number];
+type Triangulator = (points: P2[], edges: P2[]) => void
+
+function triangulateCdt2d(points: P2[], edges: P2[]){
 	cdt2d(points, edges);
 }
 
-function triangulateCon(points, edges){
+function triangulateCon(points: P2[], edges: P2[]){
 	const del = Delaunator.from(points),
 		con = new Constrainautor(del);
 	con.constrainAll(edges);
 }
 
-function triangulateRobust(points, edges){
-	const del = Delaunator.from(points),
-		con = new RobustConstrainautor(del);
-	con.constrainAll(edges);
+function fmtTime(ns: number | bigint){
+	return Number((BigInt(ns) / 1000n) | 0n);// + ' μs';
 }
 
-function fmtTime(ns){
-	return Number((ns / 1000n) | 0n);// + ' μs';
-}
-
-function median(arr){
+function median(arr: number[] | bigint[]){
 	const half = (arr.length / 2) | 0;
-	return arr.length % 2 ? (arr[half] + arr[half + 1]) / 2 : arr[half];
+	return arr.length % 2 ? (BigInt(arr[half]) + BigInt(arr[half + 1])) / 2n : arr[half];
 }
 
-function benchOne(count, json, triangulate){
+function benchOne(count: number, json: {points: P2[], edges: P2[], error?: string}, triangulate: Triangulator){
 	if(json.error){
 		return;
 	}
 	
 	const points = json.points,
 		edges = json.edges,
-		times = [];
+		times: bigint[] = [];
 	
 	// warmup
 	triangulate(points, edges);
@@ -61,7 +57,7 @@ function benchOne(count, json, triangulate){
 	};
 }
 
-function benchFiles(files, count, triangulate){
+function benchFiles(files: ReturnType<typeof loadTests>, count: number, triangulate: Triangulator){
 	const results = [];
 	
 	for(const json of files){
@@ -81,15 +77,15 @@ function benchFiles(files, count, triangulate){
 
 const files = loadTests(false);
 
-function main(args){
-	args = args.length ? args : files;
+function main(args: string[]){
+	//args = args.length ? args : files;
 	
 	console.log("Benchmarked on", os.cpus()[0].model, "with",
 			COUNT, "triangulations per file. Times in µs.");
 	console.log("cdt2d");
-	benchFiles(args, COUNT, triangulateCdt2d);
+	benchFiles(files, COUNT, triangulateCdt2d);
 	console.log("Constrainautor");
-	benchFiles(args, COUNT, triangulateCon);
+	benchFiles(files, COUNT, triangulateCon);
 	
 }
 
