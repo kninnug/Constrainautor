@@ -2,7 +2,7 @@ import tape from 'tape';
 import Constrainautor from './Constrainautor';
 import Delaunator from 'delaunator';
 import {validateDelaunator, validateVertMap, validateConstraint, validateFlips, validateAllConstraints, validateDelaunay} from './validators';
-import {loadTests} from './delaunaytests/loader';
+import {findTest, loadTests} from './delaunaytests/loader';
 
 import type {Test} from 'tape';
 import type {TestFile} from './delaunaytests/loader';
@@ -14,21 +14,23 @@ type P2 = [number, number];
 function testFile(t: Test, test: TestFile){
 	const {points, edges, error} = test,
 		del = Delaunator.from(points),
-		con = new Constrainautor(del);
+		con = new Constrainautor(del),
+        conEdges = new Set<number>();
 	
 	t.comment(`pre-constrainment`);
 	validateDelaunator(t, points, con.del);
 	validateVertMap(t, points, con);
 	validateFlips(t, con, true);
-    // pre-delaunify since Delaunator may miss some edge cases
-    con.delaunify(true, true);
-    //validateDelaunay(t, con);
+	// pre-delaunify since Delaunator may miss some edge cases
+	con.delaunify(true);
+	//validateDelaunay(t, con);
 	
 	let caught: Error | null = null;
 	for(const [p1, p2] of edges){
 		let ret: number | undefined = undefined;
 		try{
 			ret = con.constrainOne(p1, p2);
+            conEdges.add(ret);
 		}catch(ex){
 			if(!error){
 				throw ex;
@@ -51,18 +53,18 @@ function testFile(t: Test, test: TestFile){
 	// The internal structures must be consistent, even in case of an error
 	validateDelaunator(t, points, con.del);
 	validateVertMap(t, points, con);
-	validateFlips(t, con, false);
-	
-	t.comment(`shallow delaunify`);
-	con.delaunify();
-	validateFlips(t, con, false);
-	
-	t.comment(`deep delaunify`);
-	con.delaunify(true);
-	validateFlips(t, con, true);
-    validateDelaunay(t, con);
+	validateFlips(t, con, !error);
 	
 	if(!error){
+		t.comment(`shallow delaunify`);
+		//con.delaunify();
+		validateFlips(t, con, false);
+		
+		t.comment(`deep delaunify`);
+		//con.delaunify(true);
+		validateFlips(t, con, true);
+		validateDelaunay(t, con);
+	
 		t.comment(`post delaunify constraints`);
 		validateAllConstraints(t, points, edges, con);
 	}
@@ -107,12 +109,13 @@ function testExample(t: Test){
 }
 
 function main(args: string[]){
+	const files = args.length ? args.map(name => findTest(testFiles, name)).filter(t => !!t) as TestFile[] : testFiles;
 	if(!args.length){
 		tape("Example", testExample);
 		tape("Constructor", testConstructor);
 	}
 
-	for(const test of testFiles){
+	for(const test of files){
 		tape(test.name, (t) => testFile(t, test));
 	}
 }

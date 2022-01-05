@@ -1,7 +1,7 @@
 Constrainautor
 ==============
 
-A small library for constraining triangulations from [Delaunator](https://github.com/mapbox/delaunator).
+A library for constraining triangulations from [Delaunator](https://github.com/mapbox/delaunator).
 
 ![Constrained triangulation](strain.png)
 
@@ -21,7 +21,6 @@ edge between those points.
 	
 	// .. but we want a vertical edge, from [150, 50] to [150, 350]:
 	con.constrainOne(0, 2);
-	con.delaunify();
 	// del now has the constrained triangulation, in the same format that
 	// Delaunator outputs
 
@@ -55,8 +54,8 @@ is expected to be in the format that Delaunator outputs. The ES module variant
 (`lib/Constrainautor.mjs`) depends on
 [robust-predicates](https://www.npmjs.com/package/robust-predicates), but the
 CommonJS and minified versions (`lib/Constrainautor.cjs` and `lib/Constrainautor.min.js`)
-come with this dependency compiled in, and can be used standalone. The
-(original) TypeScript version is in `Constrainautor.ts`.
+come with this dependency compiled in, and can be used standalone. The (source) 
+TypeScript version is in `Constrainautor.ts`.
 
 Usage
 -----
@@ -79,58 +78,64 @@ may throw an error during constrainment, or produce bogus results.
 To triangulate a set of points, and constrain certain edges:
 
 1. Define the points to be triangulated: `points = [[x1, y1], [x2, y2], ...]`.
-2. Generate a triangulation (using Delaunator): `del = Delaunator.from(points)`.
-3. Make a constrainer: `con = new Constrainautor(del)`. Note that `del` will be
-   modified by the Constrainautor methods.
-4. Define the edges to be constrained: `edges = [[0, 1], [3, 4], ...]`. These are
+2. Define the edges to be constrained: `edges = [[0, 1], [3, 4], ...]`. These are
    indices into the `points` array.
+3. Generate a triangulation (using Delaunator): `del = Delaunator.from(points)`.
+4. Make a constrainer: `con = new Constrainautor(del)`. Note that `del` will be
+   modified by the Constrainautor methods.
 5. Constrain the triangulation: `for(const [p1, p2] of edges){ con.constrainOne(p1, p2); }`.
-6. Restore the Delaunay condition: `con.delaunify()`.
 
 Alternatively, you can call `con.constrainAll(edges)`, which will constrain all
-the edges in the supplied array and call `delaunify`.
+the edges in the supplied array. Or, (since version 4.0.0), call 
+`new Constrainautor(del, edges)` with the Delaunator output *and* the edges 
+array to create the Constrainautor and constrain the edges in one go.
 
 You can then use the triangulation in `del` as described in the [Delaunator
 guide](https://mapbox.github.io/delaunator/).
 
 If you change the point coordinates and their triangulation (via `Delaunator#update`),
 you need to re-constrain the edges by creating a `new Constrainautor` and going
-through steps 3 - 6 again.
+through steps 3 - 5 again.
 
 API reference
 -------------
 
-More details can be found in the comments of `Constrainautor.mjs`.
+More details can be found in the comments of `Constrainautor.ts`.
 
-### con = new Constrainautor(del)
+### con = new Constrainautor(del[, edges])
 
 Construct a new Constrainautor from the given triangulation. The `del` object
 should be returned from Delaunator, and is modified in-place by the 
-Constrainautor methods.
+Constrainautor methods. If `edges` is provided, it will constrain those with
+`constrainAll`.
 
 #### con.constrainOne(p1, p2)
 
 Constrain an edge in the triangulation. The arguments `p1` and `p2` must be
 indices into the `points` array originally supplied to the Delaunator. It 
 returns the id of the half-edge that points from `p1` to `p2`, or the negative
-id of the half-edge that points from `p2` to `p1`.
+id of the half-edge that points from `p2` to `p1`. Note: this half-edge id is
+only valid up to the next call to `constrainOne`, after which the constrained
+edge will still be there, but may have a different id.
 
-#### con.delaunify(deep = false, full = false)
+#### con.delaunify([deep = false])
 
-After constraining edges, call this method to restore the Delaunay condition
-(for every two triangles sharing an edge, neither lies completely within the
-circumcircle of the other), for every edge that was flipped by `constrainOne`.
-If `deep` is `true`, it will check & correct until all flipped edges satisfy
-the condition, otherwise it will do only one pass and some edges may still not
-be Delaunay. If `full` is `true`, it will also check & correct edges that were
-not flipped before.
+Check non-constrained edges if they satisfy the Delaunay condition (for every
+two triangles sharing an edge, neither lies completely within the circumcircle
+of the other), and flip the edge if they don't. If `deep` is `true`, it will
+check & correct until all flipped edges satisfy the condition, otherwise it will
+do only one pass and some edges may still not be Delaunay. 
+NB 1: since version 4.0.0 it is no longer necessary (or useful) to call this 
+method after constraining edges, since `constrainOne` will also do it.
+NB 2: since version 4.0.0 this method returns `this` instead of `this.del`.
 
 #### con.constrainAll(edges)
 
-A shortcut to constraining an array of edges by `constrainOne` and calling
-`delaunify` afterwards. The argument `edges` must be an array of arrays of 
-indices into the `points` array originally supplied to Delaunator, i.e:
-`[[p1, p2], [p3, p4], ...]`. Returns the updated `del` object.
+A shortcut to constraining an array of edges by `constrainOne`. The argument 
+`edges` must be an array of arrays of indices into the `points` array originally
+supplied to Delaunator, i.e: `[[p1, p2], [p3, p4], ...]`. Returns `this`.
+NB: since version 4.0.0 this method returns the `Constrainautor` instance,
+instead of the Delaunator object.
 
 #### con.isConstrained(edg)
 
@@ -139,35 +144,61 @@ Whether the half-edge with the given id is a constraint edge. Returns true if
 to detect if the edge must be a constraint, merely that it has been marked as
 such by the `Constrainautor` instance.
 
+#### con.findEdge(p1, p2)
+
+Find the id of the half-edge going from `p1` to `p2`. If there is only an edge 
+from `p2` to `p1` (i.e. it is on the hull), it will return the negated id. If
+there is no edge between `p1` and `p2`, the return value is `Infinity`.
+
+#### con.del
+
+The Delaunator object passed to the constructor and modified by constraining.
+
 Details
 -------
 
-At construction time, the Constrainautor library allocates two arrays, in 
-addition to the arrays already present in the Delaunator output:
+At construction time, the Constrainautor library allocates one Uint32Array, and
+two BitSet arrays, in addition to the arrays already present in the Delaunator 
+output:
 
 - `vertMap`: a mapping of each point (vertex) in the triangulation to the (id of
   the) left-most edge that points to that vertex. This is used to find the edges
   connected to any given point.
-- `flips`: keeps track of the edges that were flipped or constrained. It is used
-  by `delaunify` to determine which edges may need to be flipped again to 
-  restore the Delaunay condition.
+- `flips`: keeps track of the edges that were flipped. It is used to determine 
+  which edges may need to be flipped again to restore the Delaunay condition.
+- `consd`: keeps track of the edges that are constrained. It is used to ensure
+  those edges are not flipped during re-Delaunifying.
+
+(These should be considered private, and may disappear in a later version.)
   
-During the constraining process, or the re-Delaunay-fying afterwards, the 
-library does no dynamic allocations. This is also the reason that `constrainOne`
-does not restore the Delaunay condition immediately, as that would require 
-keeping track of an unbounded list of flipped edges. Rather, it sets `flips` to
-1 at the index of each newly created edge, which `delaunify` iterates over to
-check and restore the Delaunay condition.
+During the constraining process, or the re-Delaunayfying, the library does no 
+dynamic allocations. Rather, it sets `flips` to 1 at the index of each edge that
+was flipped, and iterates over this set afterwards to check the Delaunay 
+condition and flip the flipped edges again if needed.
 
 The library uses robust geometric predicates from
 [robust-predicates](https://github.com/mourner/robust-predicates) and
 [robust-segment-intersect](https://github.com/mikolalysenko/robust-segment-intersect),
 and should not break on smallish inputs. This can be changed by extending the
 class and overriding the `intersectSegments`, `inCircle`, and `isCollinear`
-methods. See the comments in `Constrainautor.mjs` on how they should behave.
+methods. See the comments in `Constrainautor.ts` on how they should behave.
 
 Changes
 -------
+
+### 4.0.0
+- Add `edges` parameter to constructor for one-shot constructing & constraining.
+- Change return value of `delaunify` and `constrainAll` to return the 
+  `Constrainautor` instance (the Delaunator output is still modified in place,
+  and available at `con.del`).
+- Fix issue [#4](https://github.com/kninnug/Constrainautor/issues/4) by
+  restoring the Delaunay condition immediately at the end of `constrainOne`.
+  Due to this, calling `delaunify` manually is no longer necessary.
+- Add `findEdge` method.
+- Remove `full` parameter from `delaunify`: since calling it is no longer a
+  necessity, when it is called, it will always check all edges.
+- Use 2 BitSets (see `BitSet.ts`) for keeping track of the flips and 
+  constraints, instead of 1 flips array.
 
 ### 3.0.0
 - Convert to TypeScript.
@@ -184,12 +215,12 @@ Changes
 - Move test files to separate repository (to share with other libraries).
 
 ### 2.1.0
-- Add isConstrained convenience method.
+- Add `isConstrained` convenience method.
 
 ### 2.0.0
 - Fix issue [#2](https://github.com/kninnug/Constrainautor/issues/2) by
   using [robust-predicates](https://github.com/mourner/robust-predicates).
-- Remove intersectSegments, inCircle, and segPointDistSq from the API
+- Remove `intersectSegments`, `inCircle`, and `segPointDistSq` from the API
   documentation.
 
 ### 1.0.1

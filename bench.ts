@@ -82,8 +82,8 @@ function main(args: string[]){
 	
 	console.log("Benchmarked on", os.cpus()[0].model, "with",
 			COUNT, "triangulations per file. Times in µs.");
-	console.log("cdt2d");
-	benchFiles(files, COUNT, triangulateCdt2d);
+	//console.log("cdt2d");
+	//benchFiles(files, COUNT, triangulateCdt2d);
 	console.log("Constrainautor");
 	benchFiles(files, COUNT, triangulateCon);
 	

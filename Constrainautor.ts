@@ -1,4 +1,6 @@
 import {orient2d, incircle} from 'robust-predicates';
+import {BitSet8} from './BitSet';
+import type {BitSet} from './BitSet';
 
 export interface DelaunatorLike {
     coords: {readonly length: number, readonly [n: number]: number};
@@ -7,9 +9,8 @@ export interface DelaunatorLike {
     hull:  {readonly length: number, readonly [n: number]: number};
 };
 
-const IGND = 0, // edge was not changed
-    CONSD = 1, // edge was constrained
-    FLIPD = 2; // edge was flipped
+function nextEdge(e: number){ return (e % 3 === 2) ? e - 2 : e + 1; }
+function prevEdge(e: number){ return (e % 3 === 0) ? e + 2 : e - 1; }
 
 /**
  * Constrain a triangulation from Delaunator, using (parts of) the algorithm
@@ -17,20 +18,23 @@ const IGND = 0, // edge was not changed
  * S. W. Sloan.
  */
 class Constrainautor {
-    static IGND = IGND;
-    static CONSD = CONSD;
-    static FLIPD = FLIPD;
-    
-    del: DelaunatorLike;
+    /**
+     * @member del The triangulation object from Delaunator, which will be 
+     * moddified by Constrainautor.
+     */
+    public del: DelaunatorLike;
     vertMap: Uint32Array;
-    flips: Uint8Array;
+
+    flips: BitSet;
+    consd: BitSet;
     
     /**
      * Make a Constrainautor.
      *
      * @param del The triangulation output from Delaunator.
+     * @param edges If provided, constrain these edges as by constrainAll.
      */
-    constructor(del: DelaunatorLike){
+    constructor(del: DelaunatorLike, edges?: readonly [number, number][]){
         if(!del || typeof del !== 'object' || !del.triangles || !del.halfedges || !del.coords){
             throw new Error("Expected an object with Delaunator output");
         }
@@ -43,20 +47,26 @@ class Constrainautor {
         
         this.del = del;
         
-        const U32NIL = 2**32 - 1, // Max value of a Uint32Array
+        const U32NIL = 2**32 - 1, // Max value of a Uint32Array: use as a sentinel for not yet defined 
             numPoints = del.coords.length >> 1,
             numEdges = del.triangles.length;
         
-        // Map every vertex id to the left-most edge that points to that vertex.
+        // Map every vertex id to the right-most edge that points to that vertex.
         this.vertMap = new Uint32Array(numPoints).fill(U32NIL);
         // Keep track of edges flipped while constraining
-        this.flips = new Uint8Array(numEdges).fill(IGND);
+        this.flips = new BitSet8(numEdges);
+        // Keep track of constrained edges
+        this.consd = new BitSet8(numEdges);
         
         for(let e = 0; e < numEdges; e++){
             const v = del.triangles[e];
             if(this.vertMap[v] === U32NIL){
                 this.updateVert(e);
             }
+        }
+
+        if(edges){
+            this.constrainAll(edges);
         }
     }
     
@@ -72,6 +82,7 @@ class Constrainautor {
     constrainOne(segP1: number, segP2: number){
         const {triangles, halfedges} = this.del,
             vm = this.vertMap,
+            consd = this.consd,
             start = vm[segP1];
         
         // Loop over the edges touching segP1
@@ -126,7 +137,7 @@ class Constrainautor {
                 throw new Error("Constraining edge exited the hull");
             }
             
-            if(this.flips[edg] === CONSD || this.flips[adj] === CONSD){
+            if(consd.has(edg)){ // || consd.has(adj) // assume consd is consistent
                 throw new Error("Edge intersects already constrained edge");
             }
             
@@ -196,40 +207,59 @@ class Constrainautor {
             }
         }
         
-        return this.protect(conEdge);
+        const flips = this.flips;
+        this.protect(conEdge);
+        do{
+            // need to use var to scope it outside the loop, but re-initialize
+            // to 0 each iteration
+            var flipped = 0;
+            flips.forEach(edg => {
+                flips.delete(edg);
+
+                const adj = halfedges[edg];
+                if(adj === -1){
+                    return;
+                }
+                flips.delete(adj);
+
+                if(!this.isDelaunay(edg)){
+                    this.flipDiagonal(edg);
+                    flipped++;
+                }
+            });
+        }while(flipped > 0);
+        return this.findEdge(segP1, segP2);
     }
     
     /**
-     * Fix the Delaunay condition after constraining edges.
+     * Fix the Delaunay condition. It is no longer necessary to call this
+     * method after constraining (many) edges, since constrainOne will do it 
+     * after each.
      *
      * @param deep If true, keep checking & flipping edges until all
      *        edges are Delaunay, otherwise only check the edges once.
-     * @param full If true, also check & flip edges that were not flipped in
-     *        the first place.
      * @return The triangulation object.
      */
-    delaunify(deep = false, full = false){
+    delaunify(deep = false){
         const halfedges = this.del.halfedges,
             flips = this.flips,
-            len = flips.length;
+            consd = this.consd,
+            len = halfedges.length;
         
         do{
-            var flipped = 0; /* actual valid use of var: scoped outside the loop */
+            var flipped = 0;
             for(let edg = 0; edg < len; edg++){
-                if(flips[edg] === CONSD){
+                if(consd.has(edg)){
                     continue;
                 }
-                if(!full && flips[edg] !== FLIPD){
-                    continue;
-                }
-                flips[edg] = IGND;
+                flips.delete(edg);
                 
                 const adj = halfedges[edg];
                 if(adj === -1){
                     continue;
                 }
                 
-                flips[adj] = IGND;
+                flips.delete(adj);
                 if(!this.isDelaunay(edg)){
                     this.flipDiagonal(edg);
                     flipped++;
@@ -237,7 +267,7 @@ class Constrainautor {
             }
         }while(deep && flipped > 0);
         
-        return this.del;
+        return this;
     }
     
     /**
@@ -248,14 +278,14 @@ class Constrainautor {
      *        supplied to Delaunator.
      * @return The triangulation object.
      */
-    constrainAll(edges: [number, number][]){
+    constrainAll(edges: readonly [number, number][]){
         const len = edges.length;
         for(let i = 0; i < len; i++){
             const e = edges[i];
             this.constrainOne(e[0], e[1]);
         }
         
-        return this.delaunify(true);
+        return this;
     }
     
     /**
@@ -265,7 +295,40 @@ class Constrainautor {
      * @return True if the edge is constrained.
      */
     isConstrained(edg: number){
-        return this.flips[edg] === CONSD;
+        return this.consd.has(edg);
+    }
+
+    /**
+     * Find the edge that points from p1 -> p2. If there is only an edge from
+     * p2 -> p1 (i.e. it is on the hull), returns the negative id of it.
+     * 
+     * @param p1 The index of the first point into the points array.
+     * @param p2 The index of the second point into the points array.
+     * @return The id of the edge that points from p1 -> p2, or the negative
+     *         id of the edge that goes from p2 -> p1, or Infinity if there is
+     *         no edge between p1 and p2.
+     */
+    findEdge(p1: number, p2: number){
+        const start1 = this.vertMap[p2],
+            {triangles, halfedges} = this.del;
+        let edg = start1,
+            prv = -1;
+        // Walk around p2, iterating over the edges pointing to it
+        do{
+            if(triangles[edg] === p1){
+                return edg;
+            }
+            prv = nextEdge(edg);
+            edg = halfedges[prv];
+        }while(edg !== -1 && edg !== start1);
+
+        // Did not find p1 -> p2, the only option is that it is on the hull on
+        // the 'left-hand' side, pointing p2 -> p1 (or there is no edge)
+        if(triangles[nextEdge(prv)] === p1){
+            return -prv;
+        }
+
+        return Infinity;
     }
     
     /**
@@ -277,11 +340,14 @@ class Constrainautor {
      */
     private protect(edg: number){
         const adj = this.del.halfedges[edg],
-            flips = this.flips;
-        flips[edg] = CONSD;
+            flips = this.flips,
+            consd = this.consd;
+        flips.delete(edg);
+        consd.add(edg);
         
         if(adj !== -1){
-            flips[adj] = CONSD;
+            flips.delete(adj);
+            consd.add(adj);
             return adj;
         }
         
@@ -297,14 +363,15 @@ class Constrainautor {
      */
     private markFlip(edg: number){
         const halfedges = this.del.halfedges,
-            flips = this.flips;
-        if(flips[edg] === CONSD){
+            flips = this.flips,
+            consd = this.consd;
+        if(consd.has(edg)){
             return false;
         }
         const adj = halfedges[edg];
         if(adj !== -1){
-            flips[adj] = FLIPD;
-            flips[edg] = FLIPD;
+            flips.add(edg);
+            flips.add(adj);
         }
         return true;
     }
@@ -329,8 +396,10 @@ class Constrainautor {
         //         v      \ v |           v  / v      |
         //         o ----->  o            o   ------> o 
         //           bot                     adj
+
         const {triangles, halfedges} = this.del,
             flips = this.flips,
+            consd = this.consd,
             adj = halfedges[edg],
             bot = prevEdge(edg),
             lft = nextEdge(edg),
@@ -339,21 +408,27 @@ class Constrainautor {
             adjBot = halfedges[bot],
             adjTop = halfedges[top];
         
-        if(flips[edg] === CONSD || flips[adj] === CONSD){
+        if(consd.has(edg)){ // || consd.has(adj) // assume consd is consistent
             throw new Error("Trying to flip a constrained edge");
         }
         
+        // move *edg to *top
         triangles[edg] = triangles[top];
         halfedges[edg] = adjTop;
-        flips[edg] = flips[top];
+        if(!flips.set(edg, flips.has(top))){
+            consd.set(edg, consd.has(top));
+        }
         if(adjTop !== -1){
             halfedges[adjTop] = edg;
         }
         halfedges[bot] = top;
         
+        // move *adj to *bot
         triangles[adj] = triangles[bot];
         halfedges[adj] = adjBot;
-        flips[adj] = flips[bot];
+        if(!flips.set(adj, flips.has(bot))){
+            consd.set(adj, consd.has(bot));
+        }
         if(adjBot !== -1){
             halfedges[adjBot] = adj;
         }
@@ -364,8 +439,11 @@ class Constrainautor {
         this.markFlip(adj);
         this.markFlip(rgt);
 
-        flips[bot] = FLIPD;
-        flips[top] = FLIPD;
+        // mark flips unconditionally
+        flips.add(bot);
+        consd.delete(bot);
+        flips.add(top);
+        consd.delete(top);
         
         this.updateVert(edg);
         this.updateVert(lft);
@@ -498,9 +576,6 @@ class Constrainautor {
     
     static intersectSegments = intersectSegments;
 }
-
-function nextEdge(e: number){ return (e % 3 === 2) ? e - 2 : e + 1; }
-function prevEdge(e: number){ return (e % 3 === 0) ? e + 2 : e - 1; }
 
 /**
  * Compute if two line segments [p1, p2] and [p3, p4] intersect.

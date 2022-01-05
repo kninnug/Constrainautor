@@ -180,8 +180,7 @@ function validateVertMap(t: Test, points: PTS, con: Constrainautor){
     let failed = false;
     
     for(let edg = 0; edg < numEdges; edg++){
-        const adj = del.halfedges[edg],
-            p1 = del.triangles[edg],
+        const p1 = del.triangles[edg],
             p2 = del.triangles[nextEdge(edg)];
         
         // points *to*
@@ -192,7 +191,7 @@ function validateVertMap(t: Test, points: PTS, con: Constrainautor){
     for(let i = 0; i < numPoints; i++){
         const inc = edgeMap.get(i);
         if(!inc){
-            //t.fail("point has no incoming edges");
+            //t.fail(`point ${i} has no incoming edges`);
             continue;
         }
         
@@ -243,15 +242,10 @@ function validateFlips(t: Test, con: Constrainautor, clear = true){
     let failed = false;
     
     for(let edg = 0; edg < numEdges; edg++){
-        const flp = con.flips[edg],
-            adj = del.halfedges[edg];
+        const adj = del.halfedges[edg];
         
-        if(flp !== Constrainautor.IGND && flp !== Constrainautor.CONSD && flp !== Constrainautor.FLIPD){
-            t.fail(`invalid flip value for ${edg}/${adj}: ${flp}`);
-            failed = true;
-        }
-        if(clear && flp !== Constrainautor.CONSD && flp !== Constrainautor.IGND){
-            t.fail(`flip not cleared for ${edg}/${adj}: ${flp}`);
+        if(clear && con.flips.has(edg)){
+            t.fail(`flip not cleared for ${edg}/${adj}: ${con.flips.has(edg)}`);
             failed = true;
         }
         
@@ -259,8 +253,8 @@ function validateFlips(t: Test, con: Constrainautor, clear = true){
             continue;
         }
         
-        if(flp !== con.flips[adj] || con.isConstrained(edg) !== con.isConstrained(adj)){
-            t.fail(`flip status inconsistent for ${edg}/${adj}: ${flp}/${con.flips[adj]}`);
+        if(con.isConstrained(edg) !== con.isConstrained(adj) || con.flips.has(edg) !== con.flips.has(adj)){
+            t.fail(`flip status inconsistent for ${edg}/${adj}: ${con.flips.has(edg)}/${con.flips.has(adj)}`);
             failed = true;
         }
     }
@@ -342,11 +336,12 @@ function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: numb
         [x1, y1] = points[p1],
         [x2, y2] = points[p2],
         re1 = ret === undefined ? -1 : (ret < 0 ? del.triangles[nextEdge(-ret)] : del.triangles[ret]),
-        re2 = ret === undefined ? -1 : (ret < 0 ? del.triangles[-ret] : del.triangles[nextEdge(ret)]);
+        re2 = ret === undefined ? -1 : (ret < 0 ? del.triangles[-ret] : del.triangles[nextEdge(ret)]),
+        find = con.findEdge(p1, p2);
     let failed = false;
     
     if(ret !== undefined && (re1 !== p1 || re2 !== p2)){
-        t.fail(`invalid edge returned from constrainOne: ${ret}: ${p1} -> ${p2} === ${re1} -> ${re2}`);
+        t.fail(`invalid edge returned from constrainOne: ${ret}: ${re1} -> ${re2} !== ${p1} -> ${p2}`);
         failed = true;
     }
     
@@ -359,13 +354,13 @@ function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: numb
         
         if(e1 === p1 && e2 === p2){
             if(found !== -1){
-                t.fail(`edge ${edg} is duplicate of constraint`);
+                t.fail(`edge ${edg} (${e1} -> ${e2}) is duplicate of constraint`);
                 failed = true;
             }
             found = edg;
         }else if(e1 === p2 && e2 === p1){
             if(foundAdj !== -1){
-                t.fail(`edge ${edg} is reversed duplicate of constraint`);
+                t.fail(`edge ${edg} (${e1} -> ${e2}) is reversed duplicate of constraint`);
                 failed = true;
             }
             foundAdj = edg;
@@ -379,7 +374,7 @@ function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: numb
             [x4, y4] = points[e2];
         
         if(robustIntersect([x1, y1], [x2, y2], [x3, y3], [x4, y4])){
-            t.fail(`edge ${edg} intersects constrained edge ${p1} -> ${p2}`);
+            t.fail(`edge ${edg} (${e1} -> ${e2}) intersects constrained edge ${p1} -> ${p2}`);
             failed = true;
         }
     }
@@ -388,13 +383,21 @@ function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: numb
         t.fail(`constrained edge not in triangulation`);
         failed = true;
     }
-    if(found !== -1 && !con.isConstrained(found)){
-        t.fail(`constrained edge not marked`);
-        failed = true;
+    if(found !== -1){
+        if(!con.isConstrained(found)){
+            t.fail(`constrained edge not marked`);
+            failed = true;
+        }
+        t.equal(find, found, `findEdge returned found edge: ${find} === ${found}`);
     }
-    if(foundAdj !== -1 && !con.isConstrained(foundAdj)){
-        t.fail(`reverse constrained edge not marked`);
-        failed = true;
+    if(foundAdj !== -1){
+        if(!con.isConstrained(foundAdj)){
+            t.fail(`reverse constrained edge not marked`);
+            failed = true;
+        }
+        if(found === -1){
+            t.equal(find, -foundAdj, `findEdge returned -found edge: ${find} === -${foundAdj}`);
+        }
     }
     
     t.assert(!failed, `constraint ${p1} -> ${p2}: ${ret === undefined ? `(${found})` : ret} is valid`);
@@ -404,6 +407,27 @@ function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: numb
 function validateAllConstraints(t: Test, points: PTS, edges: PTS, con: Constrainautor){
     for(const [p1, p2] of edges){
         validateConstraint(t, points, con, undefined, p1, p2);
+    }
+    const del = con.del,
+        triangles = del.triangles,
+        numEdges = triangles.length,
+        conEdges = new Set<number>();
+    for(const [p1, p2] of edges){
+        const edg = con.findEdge(p1, p2),
+            adj = con.findEdge(p2, p1);
+        if(edg >= 0){
+            conEdges.add(edg);
+        }
+        if(adj >= 0){
+            conEdges.add(adj);
+        }
+    }
+    for(let edg = 0; edg < numEdges; edg++){
+        if(conEdges.has(edg)){
+            t.assert(con.isConstrained(edg), `constrained edge ${edg} (${triangles[edg]} -> ${triangles[nextEdge(edg)]}) marked as constrained`);
+        }else if(con.isConstrained(edg)){
+            t.fail(`non-constrained edge ${edg} (${triangles[edg]} -> ${triangles[nextEdge(edg)]}) marked as constrained`);
+        }
     }
 }
 

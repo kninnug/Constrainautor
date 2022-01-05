@@ -5,6 +5,14 @@ import typescript from '@rollup/plugin-typescript';
 import replace from '@rollup/plugin-replace';
 import * as path from 'path';
 
+const terserOpts = {
+    mangle: {
+        properties: {
+            regex: /^vertMap|flips|consd|protect|markFlip|flipDiagonal|isDelaunay|updateVert$/
+        }
+    }
+};
+
 function build(name){
     return [
         {
@@ -25,7 +33,7 @@ function build(name){
                 file: `lib/${name}.cjs`,
                 exports: 'default'
             },
-            plugins: [typescript(), resolve()]
+            plugins: [resolve()]
         },
         {
             input: `lib/${name}.mjs`,
@@ -40,10 +48,19 @@ function build(name){
             input: `lib/${name}.mjs`,
             output: {
                 name,
+                format: 'es',
+                file: `lib/${name}.min.mjs`
+            },
+            plugins: [resolve(), terser(terserOpts)]
+        },
+        {
+            input: `lib/${name}.mjs`,
+            output: {
+                name,
                 format: 'umd',
                 file: `lib/${name}.min.js`
             },
-            plugins: [resolve(), commonjs(), terser()]
+            plugins: [resolve(), commonjs(), terser(terserOpts)]
         }
     ];
 }
@@ -74,5 +91,6 @@ export default [
     ...build('Constrainautor'),
     ...test('test'),
     ...test('testint'),
+    ...test('testbits'),
     ...test('bench')
 ];

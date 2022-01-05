@@ -5,8 +5,14 @@
   "main": "./lib/Constrainautor.min.js",
   "module": "./lib/Constrainautor.mjs",
   "exports": {
-    "import": "./lib/Constrainautor.mjs",
-    "require": "./lib/Constrainautor.cjs"
+    ".": {
+      "import": "./lib/Constrainautor.mjs",
+      "require": "./lib/Constrainautor.cjs"
+    },
+    "./min": {
+      "import": "./lib/Constrainautor.min.mjs",
+      "require": "./lib/Constrainautor.min.js"
+    }
   },
   "types": "Constrainautor.ts",
   "directories": {
@@ -14,13 +20,16 @@
   },
   "files": [
     "Constrainautor.ts",
+    "BitSet.ts",
     "lib/Constrainautor.mjs",
     "lib/Constrainautor.cjs",
     "lib/Constrainautor.js",
-    "lib/Constrainautor.min.js"
+    "lib/Constrainautor.min.js",
+    "lib/Constrainautor.min.mjs"
   ],
   "scripts": {
-    "test": "npm run build && node ./test/testint.mjs && node ./test/test.mjs",
+    "test": "npm run build && node ./test/test.mjs",
+    "testutil": "npm run build && node ./test/testint.mjs && node ./test/testbits.mjs",
     "build": "rollup -c",
     "prepare": "npm run build",
     "clean": "rm -r ./coverage/ ./lib/ ./test/ || true",
