@@ -19,13 +19,23 @@ function triangulateCon(points: P2[], edges: P2[]){
 	con.constrainAll(edges);
 }
 
-function fmtTime(ns: number | bigint){
+export function fmtTime(ns: number | bigint){
 	return Number((BigInt(ns) / 1000n) | 0n);// + ' μs';
 }
 
-function median(arr: number[] | bigint[]){
+export function median(arr: number[] | bigint[]){
 	const half = (arr.length / 2) | 0;
 	return arr.length % 2 ? (BigInt(arr[half]) + BigInt(arr[half + 1])) / 2n : arr[half];
+}
+
+export function summarizeTimes(times: bigint[]){
+	times.sort((a, b) => a < b ? -1 : 1);
+	return {
+		min: fmtTime(times[0]),
+		max: fmtTime(times[times.length - 1]),
+		median: fmtTime(median(times)),
+		mean: fmtTime(times.reduce((a, b) => a + b, 0n) / BigInt(times.length))
+	};
 }
 
 function benchOne(count: number, json: {points: P2[], edges: P2[], error?: string}, triangulate: Triangulator){
@@ -48,13 +58,7 @@ function benchOne(count: number, json: {points: P2[], edges: P2[], error?: strin
 		times.push(end - start);
 	}
 	
-	times.sort((a, b) => a < b ? -1 : 1);
-	return {
-		min: fmtTime(times[0]),
-		max: fmtTime(times[count - 1]),
-		median: fmtTime(median(times)),
-		mean: fmtTime(times.reduce((a, b) => a + b, 0n) / BigInt(times.length))
-	};
+	return summarizeTimes(times);
 }
 
 function benchFiles(files: ReturnType<typeof loadTests>, count: number, triangulate: Triangulator){
@@ -75,9 +79,9 @@ function benchFiles(files: ReturnType<typeof loadTests>, count: number, triangul
 	console.table(results);
 }
 
-const files = loadTests(false);
-
 function main(args: string[]){
+	const files = loadTests(false);
+
 	//args = args.length ? args : files;
 	
 	console.log("Benchmarked on", os.cpus()[0].model, "with",

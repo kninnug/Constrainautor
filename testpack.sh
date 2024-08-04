@@ -18,10 +18,13 @@ console.log('del', del.triangles, del.halfedges);
 EOF
 )
 
-SOURCE="$PWD"
+SOURCE=$(realpath "$PWD")
 DIR=$(mktemp -d)
 
+echo "Running in $DIR"
+
 cd "$DIR"
+echo "Packing $SOURCE"
 PACK=$(npm --silent pack "$SOURCE")
 npm install "./$PACK" typescript delaunator@4
 echo "CommonJS"
@@ -34,7 +37,7 @@ echo "ESM Minified"
 node --input-type=module -e "import Constrainautor from '@kninnug/constrainautor/min'; import Delaunator from 'delaunator'; $EXAMPLE"
 echo "TypeScript"
 cat <<EOF > ./test.ts
-import Constrainautor from '@kninnug/Constrainautor';
+import Constrainautor from '@kninnug/constrainautor';
 import Delaunator from 'delaunator';
 console.log('C', Constrainautor);
 $EXAMPLE

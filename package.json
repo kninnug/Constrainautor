@@ -32,7 +32,7 @@
     "testutil": "npm run build && node ./test/testint.mjs && node ./test/testbits.mjs",
     "build": "rollup -c",
     "prepare": "npm run build",
-    "clean": "rm -r ./coverage/ ./lib/ ./test/ || true",
+    "clean": "rm -rf ./coverage/ ./lib/ ./test/ || true",
     "bench": "npm run build && node ./test/bench.mjs"
   },
   "keywords": [
@@ -51,6 +51,7 @@
     "@rollup/plugin-commonjs": "^21.0.1",
     "@rollup/plugin-node-resolve": "^13.1.1",
     "@rollup/plugin-replace": "^3.0.0",
+    "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^8.3.0",
     "@types/delaunator": "^3.0.0",
     "@types/tape": "^4.13.0",

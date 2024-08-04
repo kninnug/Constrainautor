@@ -237,7 +237,7 @@ Attributions
 ------------
 
 - The constraining algorithm is adapted from [A fast algorithm for generating constrained Delaunay triangulations](https://web.archive.org/web/20210506140628if_/https://www.newcastle.edu.au/__data/assets/pdf_file/0019/22519/23_A-fast-algortithm-for-generating-constrained-Delaunay-triangulations.pdf), 1992, S. W. Sloan.
-- Uses Vladimir Agafonkin's [robust-predicates](https://github.com/mourner/robust-predicates) port
+- Uses Volodymyr Agafonkin's [robust-predicates](https://github.com/mourner/robust-predicates) port
   of Jonathan Shewchuk's [Adaptive Precision Floating-Point Arithmetic and Fast Robust Predicates
   for Computational Geometry](http://www.cs.cmu.edu/~quake/robust.html).
 - Robust segment-segment intersection test adapted from Mikola Lysenko's
