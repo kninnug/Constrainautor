@@ -7,11 +7,13 @@
   "exports": {
     ".": {
       "import": "./lib/Constrainautor.mjs",
-      "require": "./lib/Constrainautor.cjs"
+      "require": "./lib/Constrainautor.cjs",
+      "types": "./Constrainautor.ts"
     },
     "./min": {
       "import": "./lib/Constrainautor.min.mjs",
-      "require": "./lib/Constrainautor.min.js"
+      "require": "./lib/Constrainautor.min.js",
+      "types": "./Constrainautor.ts"
     }
   },
   "types": "Constrainautor.ts",
