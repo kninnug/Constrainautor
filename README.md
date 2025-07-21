@@ -186,6 +186,9 @@ methods. See the comments in `Constrainautor.ts` on how they should behave.
 Changes
 -------
 
+### 4.0.1
+- Support `"moduleResolution": "bundler"` (thanks, [Bowen7](https://github.com/Bowen7)!)
+
 ### 4.0.0
 - Add `edges` parameter to constructor for one-shot constructing & constraining.
 - Change return value of `delaunify` and `constrainAll` to return the 
