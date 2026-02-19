@@ -315,6 +315,10 @@ function validateDelaunay(t: Test, con: Constrainautor){
     return failed;
 }
 
+function isNegativeZero(val: any){
+    return Object.is(val, -0);
+}
+
 /**
  * Validate that an edge was correctly constrained:
  * - `constrainOne` returned the correct value.
@@ -335,8 +339,8 @@ function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: numb
         numEdges = del.triangles.length,
         [x1, y1] = points[p1],
         [x2, y2] = points[p2],
-        re1 = ret === undefined ? -1 : (ret < 0 ? del.triangles[nextEdge(-ret)] : del.triangles[ret]),
-        re2 = ret === undefined ? -1 : (ret < 0 ? del.triangles[-ret] : del.triangles[nextEdge(ret)]),
+        re1 = ret === undefined ? -1 : (ret < 0 || isNegativeZero(ret) ? del.triangles[nextEdge(-ret)] : del.triangles[ret]),
+        re2 = ret === undefined ? -1 : (ret < 0 || isNegativeZero(ret) ? del.triangles[-ret] : del.triangles[nextEdge(ret)]),
         find = con.findEdge(p1, p2);
     let failed = false;
     
