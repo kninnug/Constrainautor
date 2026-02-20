@@ -14,8 +14,8 @@ function triangulateCdt2d(points: P2[], edges: P2[]){
 }
 
 function triangulateCon(points: P2[], edges: P2[]){
-	const del = Delaunator.from(points),
-		con = new Constrainautor(del);
+	const del = Delaunator.from(points);
+	const con = new Constrainautor(del);
 	con.constrainAll(edges);
 }
 
@@ -43,9 +43,9 @@ function benchOne(count: number, json: {points: P2[], edges: P2[], error?: strin
 		return;
 	}
 	
-	const points = json.points,
-		edges = json.edges,
-		times: bigint[] = [];
+	const points = json.points;
+	const edges = json.edges;
+	const times: bigint[] = [];
 	
 	// warmup
 	triangulate(points, edges);

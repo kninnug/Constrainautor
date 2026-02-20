@@ -70,8 +70,8 @@ const ints: [boolean, string, P2, P2, P2, P2][] = [
 	};
 
 function testIntersect(t: Test, pts: P2[], should: boolean){
-	const [[p1x, p1y], [p2x, p2y], [p3x, p3y], [p4x, p4y]] = pts,
-		ret = intersectSegments(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y);
+	const [[p1x, p1y], [p2x, p2y], [p3x, p3y], [p4x, p4y]] = pts;
+	const ret = intersectSegments(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y);
 	t.assert(ret === should, 
 		`Intersect: [(${p1x},${p1y}), (${p2x},${p2y})] x [(${p3x},${p3y}), (${p4x},${p4y})] == ${should} (${ret})`);
 }

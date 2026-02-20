@@ -19,9 +19,9 @@ abstract class BitSet {
      * @return this.
      */
     add(idx: number){
-        const W = this.W,
-            byte = (idx / W) | 0,
-            bit = idx % W;
+        const W = this.W;
+        const byte = (idx / W) | 0;
+        const bit = idx % W;
         this.bs[byte] |= 1 << bit;
         return this;
     }
@@ -33,9 +33,9 @@ abstract class BitSet {
      * @return this.
      */
     delete(idx: number){
-        const W = this.W,
-            byte = (idx / W) | 0,
-            bit = idx % W;
+        const W = this.W;
+        const byte = (idx / W) | 0;
+        const bit = idx % W;
         this.bs[byte] &= ~(1 << bit);
         return this;
     }
@@ -48,10 +48,10 @@ abstract class BitSet {
      * @return val.
      */
     set(idx: number, val: boolean){
-        const W = this.W,
-            byte = (idx / W) | 0,
-            bit = idx % W,
-            m = 1 << bit;
+        const W = this.W;
+        const byte = (idx / W) | 0;
+        const bit = idx % W;
+        const m = 1 << bit;
         //this.bs[byte] = set ? this.bs[byte] | m : this.bs[byte] & ~m;
         this.bs[byte] ^= (-val ^ this.bs[byte]) & m; // -set == set * 255
         return val;
@@ -64,9 +64,9 @@ abstract class BitSet {
      * @return True if the number is in the set.
      */
     has(idx: number){
-        const W = this.W,
-            byte = (idx / W) | 0,
-            bit = idx % W;
+        const W = this.W;
+        const byte = (idx / W) | 0;
+        const bit = idx % W;
         return !!(this.bs[byte] & (1 << bit));
     }
 
@@ -81,9 +81,9 @@ abstract class BitSet {
      * @return this.
      */
     forEach(fn: (idx: number) => void){
-        const W = this.W,
-            bs = this.bs,
-            len = bs.length;
+        const W = this.W;
+        const bs = this.bs;
+        const len = bs.length;
         for(let byte = 0; byte < len; byte++){
             let bit = 0;
             // bs[byte] may change during iteration
@@ -111,8 +111,8 @@ export class BitSet8 extends BitSet {
      *        can be stored in it to len - 1.
      */
     constructor(len: number){
-        const W = 8,
-            bs = new Uint8Array(Math.ceil(len / W)).fill(0);
+        const W = 8;
+        const bs = new Uint8Array(Math.ceil(len / W)).fill(0);
         super(W, bs);
     }
 }
@@ -128,8 +128,8 @@ export class BitSet16 extends BitSet {
      *        can be stored in it to len - 1.
      */
     constructor(len: number){
-        const W = 16,
-            bs = new Uint16Array(Math.ceil(len / W)).fill(0);
+        const W = 16;
+        const bs = new Uint16Array(Math.ceil(len / W)).fill(0);
         super(W, bs);
     }
 }
@@ -145,8 +145,8 @@ export class BitSet32 extends BitSet {
      *        can be stored in it to len - 1.
      */
     constructor(len: number){
-        const W = 32,
-            bs = new Uint32Array(Math.ceil(len / W)).fill(0);
+        const W = 32;
+        const bs = new Uint32Array(Math.ceil(len / W)).fill(0);
         super(W, bs);
     }
 }

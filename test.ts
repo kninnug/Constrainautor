@@ -12,10 +12,10 @@ const testFiles = loadTests(true);
 type P2 = [number, number];
 
 function testFile(t: Test, test: TestFile){
-	const {points, edges, error} = test,
-		del = Delaunator.from(points),
-		con = new Constrainautor(del),
-        conEdges = new Set<number>();
+	const {points, edges, error} = test;
+	const del = Delaunator.from(points);
+	const con = new Constrainautor(del);
+	const conEdges = new Set<number>();
 	
 	t.comment(`pre-constrainment`);
 	validateDelaunator(t, points, con.del);
@@ -95,9 +95,9 @@ function testConstructor(t: Test){
 }
 
 function testExample(t: Test){
-	const points: P2[] = [[150, 50], [50, 200], [150, 350], [250, 200]],
-		del = Delaunator.from(points),
-		con = new Constrainautor(del);
+	const points: P2[] = [[150, 50], [50, 200], [150, 350], [250, 200]];
+	const del = Delaunator.from(points);
+	const con = new Constrainautor(del);
 	
 	con.constrainAll([[0, 2]]);
 	

@@ -47,9 +47,9 @@ class Constrainautor {
         
         this.del = del;
         
-        const U32NIL = 2**32 - 1, // Max value of a Uint32Array: use as a sentinel for not yet defined 
-            numPoints = del.coords.length >> 1,
-            numEdges = del.triangles.length;
+        const U32NIL = 2**32 - 1; // Max value of a Uint32Array: use as a sentinel for not yet defined 
+        const numPoints = del.coords.length >> 1;
+        const numEdges = del.triangles.length;
         
         // Map every vertex id to the right-most edge that points to that vertex.
         this.vertMap = new Uint32Array(numPoints).fill(U32NIL);
@@ -58,9 +58,11 @@ class Constrainautor {
         // Keep track of constrained edges
         this.consd = new BitSet8(numEdges);
         
+        const triangles = del.triangles;
+        const vm = this.vertMap;
         for(let e = 0; e < numEdges; e++){
-            const v = del.triangles[e];
-            if(this.vertMap[v] === U32NIL){
+            const v = triangles[e];
+            if(vm[v] === U32NIL){
                 this.updateVert(e);
             }
         }
@@ -80,25 +82,25 @@ class Constrainautor {
      *         direction (p2 to p1), the negative of its id is returned.
      */
     constrainOne(segP1: number, segP2: number){
-        const {triangles, halfedges} = this.del,
-            vm = this.vertMap,
-            consd = this.consd,
-            start = vm[segP1];
+        const {triangles, halfedges} = this.del;
+        const vm = this.vertMap;
+        const consd = this.consd;
+        const start = vm[segP1];
         
         // Loop over the edges touching segP1
         let edg = start;
         do{
             // edg points toward segP1, so its start-point is opposite it
-            const p4 = triangles[edg],
-                nxt = nextEdge(edg);
+            const p4 = triangles[edg];
+            const nxt = nextEdge(edg);
             
             // already constrained, but in reverse order
             if(p4 === segP2){
                 return this.protect(edg);
             }
             // The edge opposite segP1
-            const opp = prevEdge(edg),
-                p3 = triangles[opp];
+            const opp = prevEdge(edg);
+            const p3 = triangles[opp];
             
             // already constrained
             if(p3 === segP2){
@@ -127,11 +129,11 @@ class Constrainautor {
             // edg is the intersecting half-edge in the triangle we came from
             // adj is now the opposite half-edge in the adjacent triangle, which
             // is away from segP1.
-            const adj = halfedges[edg],
-                // cross diagonal
-                bot = prevEdge(edg),
-                top = prevEdge(adj),
-                rgt = nextEdge(adj);
+            const adj = halfedges[edg];
+            // cross diagonal
+            const bot = prevEdge(edg);
+            const top = prevEdge(adj);
+            const rgt = nextEdge(adj);
             
             if(adj === -1){
                 throw new Error("Constraining edge exited the hull");
@@ -241,10 +243,10 @@ class Constrainautor {
      * @return The triangulation object.
      */
     delaunify(deep = false){
-        const halfedges = this.del.halfedges,
-            flips = this.flips,
-            consd = this.consd,
-            len = halfedges.length;
+        const halfedges = this.del.halfedges;
+        const flips = this.flips;
+        const consd = this.consd;
+        const len = halfedges.length;
         
         do{
             var flipped = 0;
@@ -309,10 +311,11 @@ class Constrainautor {
      *         no edge between p1 and p2.
      */
     findEdge(p1: number, p2: number){
-        const start1 = this.vertMap[p2],
-            {triangles, halfedges} = this.del;
-        let edg = start1,
-            prv = -1;
+        const start1 = this.vertMap[p2];
+        const triangles = this.del.triangles;
+        const halfedges = this.del.halfedges;
+        let edg = start1;
+        let prv = -1;
         // Walk around p2, iterating over the edges pointing to it
         do{
             if(triangles[edg] === p1){
@@ -339,9 +342,9 @@ class Constrainautor {
      * @return If edg has an adjacent, returns that, otherwise -edg.
      */
     private protect(edg: number){
-        const adj = this.del.halfedges[edg],
-            flips = this.flips,
-            consd = this.consd;
+        const adj = this.del.halfedges[edg];
+        const flips = this.flips;
+        const consd = this.consd;
         flips.delete(edg);
         consd.add(edg);
         
@@ -362,9 +365,9 @@ class Constrainautor {
      * @return True if edg was not constrained.
      */
     private markFlip(edg: number){
-        const halfedges = this.del.halfedges,
-            flips = this.flips,
-            consd = this.consd;
+        const halfedges = this.del.halfedges;
+        const flips = this.flips;
+        const consd = this.consd;
         if(consd.has(edg)){
             return false;
         }
@@ -397,16 +400,17 @@ class Constrainautor {
         //         o ----->  o            o   ------> o 
         //           bot                     adj
 
-        const {triangles, halfedges} = this.del,
-            flips = this.flips,
-            consd = this.consd,
-            adj = halfedges[edg],
-            bot = prevEdge(edg),
-            lft = nextEdge(edg),
-            top = prevEdge(adj),
-            rgt = nextEdge(adj),
-            adjBot = halfedges[bot],
-            adjTop = halfedges[top];
+        const triangles = this.del.triangles;
+        const halfedges = this.del.halfedges;
+        const flips = this.flips;
+        const consd = this.consd;
+        const adj = halfedges[edg];
+        const bot = prevEdge(edg);
+        const lft = nextEdge(edg);
+        const top = prevEdge(adj);
+        const rgt = nextEdge(adj);
+        const adjBot = halfedges[bot];
+        const adjTop = halfedges[top];
         
         if(consd.has(edg)){ // || consd.has(adj) // assume consd is consistent
             throw new Error("Trying to flip a constrained edge");
@@ -463,16 +467,17 @@ class Constrainautor {
      * @return True if they are Delaunay.
      */
     private isDelaunay(edg: number){
-        const {triangles, halfedges} = this.del,
-            adj = halfedges[edg];
+        const triangles = this.del.triangles;
+        const halfedges = this.del.halfedges;
+        const adj = halfedges[edg];
         if(adj === -1){
             return true;
         }
         
-        const p1 = triangles[prevEdge(edg)],
-            p2 = triangles[edg],
-            p3 = triangles[nextEdge(edg)],
-            px = triangles[prevEdge(adj)];
+        const p1 = triangles[prevEdge(edg)];
+        const p2 = triangles[edg];
+        const p3 = triangles[nextEdge(edg)];
+        const px = triangles[prevEdge(adj)];
         
         return !this.inCircle(p1, p2, p3, px);
     }
@@ -485,9 +490,10 @@ class Constrainautor {
      * @return The id of the right-most incoming edge.
      */
     private updateVert(start: number){
-        const {triangles, halfedges} = this.del,
-            vm = this.vertMap,
-            v = triangles[start];
+        const triangles = this.del.triangles;
+        const halfedges = this.del.halfedges;
+        const vm = this.vertMap;
+        const v = triangles[start];
         
         // When iterating over incoming edges around a vertex, we do so in
         // clockwise order ('going left'). If the vertex lies on the hull, two
@@ -496,8 +502,8 @@ class Constrainautor {
         // and the gap. So walk counter-clockwise until we find an edge on the
         // hull, or get back to where we started.
         
-        let inc = prevEdge(start),
-            adj = halfedges[inc];
+        let inc = prevEdge(start);
+        let adj = halfedges[inc];
         while(adj !== -1 && adj !== start){
             inc = prevEdge(adj);
             adj = halfedges[inc];
@@ -594,14 +600,14 @@ class Constrainautor {
  */
 function intersectSegments(p1x: number, p1y: number, p2x: number, p2y: number,
         p3x: number, p3y: number, p4x: number, p4y: number){
-    const x0 = orient2d(p1x, p1y, p3x, p3y, p4x, p4y),
-        y0 = orient2d(p2x, p2y, p3x, p3y, p4x, p4y);
+    const x0 = orient2d(p1x, p1y, p3x, p3y, p4x, p4y);
+    const y0 = orient2d(p2x, p2y, p3x, p3y, p4x, p4y);
     if((x0 > 0 && y0 > 0) || (x0 < 0 && y0 < 0)) {
         return false
     }
 
-    const x1 = orient2d(p3x, p3y, p1x, p1y, p2x, p2y),
-        y1 = orient2d(p4x, p4y, p1x, p1y, p2x, p2y);
+    const x1 = orient2d(p3x, p3y, p1x, p1y, p2x, p2y);
+    const y1 = orient2d(p4x, p4y, p1x, p1y, p2x, p2y);
     if((x1 > 0 && y1 > 0) || (x1 < 0 && y1 < 0)) {
         return false;
     }

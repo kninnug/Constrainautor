@@ -19,9 +19,9 @@ class SetMap<Key, Value> extends Map<Key, Set<Value>> {
      * key didn't have one yet.
      *
      * @override
-     * @param {any} key The key.
-     * @param {any} val The value.
-     * @return {SetMap} this.
+     * @param key The key.
+     * @param val The value.
+     * @return this.
      */
     set(key: Key, val: Set<Value>): this;
     set(key: Key, val: Value): this;
@@ -45,9 +45,9 @@ class SetMap<Key, Value> extends Map<Key, Set<Value>> {
      * is removed from the set.
      *
      * @override
-     * @param {any} key The key.
-     * @param {any} val The value.
-     * @return {boolean} True if the value/key was in the set-map.
+     * @param key The key.
+     * @param val The value.
+     * @return True if the value/key was in the set-map.
      */
     delete(key: Key, val?: Value){
         if(val !== undefined){
@@ -91,10 +91,10 @@ function validateDelaunator(t: Test, points: PTS, del: DelaunatorLike){
             failed = true;
         }
         
-        const e1 = del.triangles[edg],
-            e2 = del.triangles[nextEdge(edg)],
-            a1 = del.triangles[adj],
-            a2 = del.triangles[nextEdge(adj)];
+        const e1 = del.triangles[edg];
+        const e2 = del.triangles[nextEdge(edg)];
+        const a1 = del.triangles[adj];
+        const a2 = del.triangles[nextEdge(adj)];
         
         if(e1 !== a2 && e2 !== a1){
             t.fail(`halfedges ${edg}/${adj} do not share end-points (${e1}, ${e2}) / (${a2}, ${a1})`);
@@ -103,8 +103,8 @@ function validateDelaunator(t: Test, points: PTS, del: DelaunatorLike){
     }
 
     // validate triangulation
-    const hullAreas = [],
-        hulLen = del.hull.length;
+    const hullAreas = [];
+    const hulLen = del.hull.length;
     for(let i = 0, j = hulLen - 1; i < hulLen; j = i++){
         const [x0, y0] = points[del.hull[j]];
         const [x, y] = points[del.hull[i]];
@@ -173,10 +173,10 @@ function prevEdge(e: number){ return (e % 3 === 0) ? e + 2 : e - 1; }
  * @param con The constrainautor.
  */
 function validateVertMap(t: Test, points: PTS, con: Constrainautor){
-    const del = con.del,
-        numPoints = points.length,
-        numEdges = del.triangles.length,
-        edgeMap = new SetMap<number, number>();
+    const del = con.del;
+    const numPoints = points.length;
+    const numEdges = del.triangles.length;
+    const edgeMap = new SetMap<number, number>();
     let failed = false;
     
     for(let edg = 0; edg < numEdges; edg++){
@@ -237,8 +237,8 @@ function validateVertMap(t: Test, points: PTS, con: Constrainautor){
  * @param clear If `true`, disallow FLIPD values.
  */
 function validateFlips(t: Test, con: Constrainautor, clear = true){
-    const del = con.del,
-        numEdges = del.triangles.length;
+    const del = con.del;
+    const numEdges = del.triangles.length;
     let failed = false;
     
     for(let edg = 0; edg < numEdges; edg++){
@@ -270,9 +270,9 @@ function validateFlips(t: Test, con: Constrainautor, clear = true){
  * @param con The constrainautor.
  */
 function validateDelaunay(t: Test, con: Constrainautor){
-    const del = con.del,
-        pts = del.coords,
-        len = del.triangles.length;
+    const del = con.del;
+    const pts = del.coords;
+    const len = del.triangles.length;
     let failed = false;
 
     for(let edg = 0; edg < len; edg++){
@@ -295,14 +295,14 @@ function validateDelaunay(t: Test, con: Constrainautor){
          *           o 
          *         e1/a2
          */
-        const e1 = del.triangles[edg],
-            e2 = del.triangles[nextEdge(edg)],
-            e3 = del.triangles[nextEdge(nextEdge(edg))],
-            a3 = del.triangles[nextEdge(nextEdge(adj))],
-            p1x = pts[e1 * 2], p1y = pts[e1 * 2 + 1],
-            p2x = pts[e2 * 2], p2y = pts[e2 * 2 + 1],
-            p3x = pts[e3 * 2], p3y = pts[e3 * 2 + 1],
-            p4x = pts[a3 * 2], p4y = pts[a3 * 2 + 1];
+        const e1 = del.triangles[edg];
+        const e2 = del.triangles[nextEdge(edg)];
+        const e3 = del.triangles[nextEdge(nextEdge(edg))];
+        const a3 = del.triangles[nextEdge(nextEdge(adj))];
+        const p1x = pts[e1 * 2], p1y = pts[e1 * 2 + 1];
+        const p2x = pts[e2 * 2], p2y = pts[e2 * 2 + 1];
+        const p3x = pts[e3 * 2], p3y = pts[e3 * 2 + 1];
+        const p4x = pts[a3 * 2], p4y = pts[a3 * 2 + 1];
         
         const isD = incircle(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y);
         if(isD < 0){
@@ -335,13 +335,13 @@ function isNegativeZero(val: any){
  * @param p2 The index of point 2.
  */
 function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: number | undefined, p1: number, p2: number){
-    const del = con.del,
-        numEdges = del.triangles.length,
-        [x1, y1] = points[p1],
-        [x2, y2] = points[p2],
-        re1 = ret === undefined ? -1 : (ret < 0 || isNegativeZero(ret) ? del.triangles[nextEdge(-ret)] : del.triangles[ret]),
-        re2 = ret === undefined ? -1 : (ret < 0 || isNegativeZero(ret) ? del.triangles[-ret] : del.triangles[nextEdge(ret)]),
-        find = con.findEdge(p1, p2);
+    const del = con.del;
+    const numEdges = del.triangles.length;
+    const [x1, y1] = points[p1];
+    const [x2, y2] = points[p2];
+    const re1 = ret === undefined ? -1 : (ret < 0 || isNegativeZero(ret) ? del.triangles[nextEdge(-ret)] : del.triangles[ret]);
+    const re2 = ret === undefined ? -1 : (ret < 0 || isNegativeZero(ret) ? del.triangles[-ret] : del.triangles[nextEdge(ret)]);
+    const find = con.findEdge(p1, p2);
     let failed = false;
     
     if(ret !== undefined && (re1 !== p1 || re2 !== p2)){
@@ -349,12 +349,12 @@ function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: numb
         failed = true;
     }
     
-    let found = -1,
-        foundAdj = -1;
+    let found = -1;
+    let foundAdj = -1;
     
     for(let edg = 0; edg < numEdges; edg++){
-        const e1 = del.triangles[edg],
-            e2 = del.triangles[nextEdge(edg)];
+        const e1 = del.triangles[edg];
+        const e2 = del.triangles[nextEdge(edg)];
         
         if(e1 === p1 && e2 === p2){
             if(found !== -1){
@@ -374,8 +374,8 @@ function validateConstraint(t: Test, points: PTS, con: Constrainautor, ret: numb
             continue;
         }
         
-        const [x3, y3] = points[e1],
-            [x4, y4] = points[e2];
+        const [x3, y3] = points[e1];
+        const [x4, y4] = points[e2];
         
         if(robustIntersect([x1, y1], [x2, y2], [x3, y3], [x4, y4])){
             t.fail(`edge ${edg} (${e1} -> ${e2}) intersects constrained edge ${p1} -> ${p2}`);
@@ -412,13 +412,13 @@ function validateAllConstraints(t: Test, points: PTS, edges: PTS, con: Constrain
     for(const [p1, p2] of edges){
         validateConstraint(t, points, con, undefined, p1, p2);
     }
-    const del = con.del,
-        triangles = del.triangles,
-        numEdges = triangles.length,
-        conEdges = new Set<number>();
+    const del = con.del;
+    const triangles = del.triangles;
+    const numEdges = triangles.length;
+    const conEdges = new Set<number>();
     for(const [p1, p2] of edges){
-        const edg = con.findEdge(p1, p2),
-            adj = con.findEdge(p2, p1);
+        const edg = con.findEdge(p1, p2);
+        const adj = con.findEdge(p2, p1);
         if(edg >= 0){
             conEdges.add(edg);
         }
