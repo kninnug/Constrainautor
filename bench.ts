@@ -2,7 +2,7 @@ import Delaunator from 'delaunator';
 import Constrainautor from './Constrainautor';
 import cdt2d from 'cdt2d';
 import os from 'os';
-import {loadTests} from './delaunaytests/loader';
+import {findTest, loadTests, TestFile} from './delaunaytests/loader';
 
 const COUNT = 100;
 
@@ -16,7 +16,8 @@ function triangulateCdt2d(points: P2[], edges: P2[]){
 function triangulateCon(points: P2[], edges: P2[]){
 	const del = Delaunator.from(points);
 	const con = new Constrainautor(del);
-	con.constrainAll(edges);
+	con.delaunify(true);
+	return con.constrainAll(edges);
 }
 
 export function fmtTime(ns: number | bigint){
@@ -65,7 +66,6 @@ function benchFiles(files: ReturnType<typeof loadTests>, count: number, triangul
 	const results = [];
 	
 	for(const json of files){
-		//const json = JSON.parse(fs.readFileSync(file, 'utf8'));
 		if(!json.error){
 			results.push({
 				name: json.name,
@@ -80,14 +80,13 @@ function benchFiles(files: ReturnType<typeof loadTests>, count: number, triangul
 }
 
 function main(args: string[]){
-	const files = loadTests(false);
+	const testFiles = loadTests(false);
+	const files = args.length ? args.map(name => findTest(testFiles, name)).filter(t => !!t) as TestFile[] : testFiles;
 
-	//args = args.length ? args : files;
-	
 	console.log("Benchmarked on", os.cpus()[0].model, "with",
 			COUNT, "triangulations per file. Times in µs.");
-	//console.log("cdt2d");
-	//benchFiles(files, COUNT, triangulateCdt2d);
+	console.log("cdt2d");
+	benchFiles(files, COUNT, triangulateCdt2d);
 	console.log("Constrainautor");
 	benchFiles(files, COUNT, triangulateCon);
 	
