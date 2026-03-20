@@ -8,6 +8,9 @@ import type {DelaunatorLike} from './Constrainautor';
 type P2 = [number, number];
 type PTS = P2[];
 
+export function nextEdge(e: number){ return (e % 3 === 2) ? e - 2 : e + 1; }
+export function prevEdge(e: number){ return (e % 3 === 0) ? e + 2 : e - 1; }
+
 /**
  * Maps keys to sets of values.
  *
@@ -79,6 +82,14 @@ class SetMap<Key, Value> extends Map<Key, Set<Value>> {
  */
 function validateDelaunator(t: Test, points: PTS, del: DelaunatorLike){
     let failed = false;
+
+    //for(let pnt = 0; pnt < points.length; pnt++){
+    //    if(!Array.prototype.includes.call(del.triangles, pnt)){
+    //        t.fail(`point ${pnt} not triangulated`);
+    //        failed = true;
+    //    }
+    //}
+
     // validate halfedges
     for(let edg = 0; edg < del.triangles.length; edg++){
         const adj = del.halfedges[edg];
@@ -159,12 +170,9 @@ function sum(x: number[]){
     return sum + err;
 }
 
-function nextEdge(e: number){ return (e % 3 === 2) ? e - 2 : e + 1; }
-function prevEdge(e: number){ return (e % 3 === 0) ? e + 2 : e - 1; }
-
 /**
  * Validate the vertMap of a Constrainautor:
- * - Every point has at least one incoming edge.
+ * - Un-triangulated points are found by untriangulatedPoints.
  * - All incoming edges to a point can be reached by walking around the point
  *   starting at the edge in `con.vertMap`.
  *
@@ -177,25 +185,34 @@ function validateVertMap(t: Test, points: PTS, con: Constrainautor){
     const numPoints = points.length;
     const numEdges = del.triangles.length;
     const edgeMap = new SetMap<number, number>();
+    const unTried = new Set(con.untriangulatedPoints());
     let failed = false;
     
     for(let edg = 0; edg < numEdges; edg++){
-        const p1 = del.triangles[edg],
-            p2 = del.triangles[nextEdge(edg)];
+        const p1 = del.triangles[edg];
         
         // points *to*
         edgeMap.set(p1, prevEdge(edg));
-        edgeMap.set(p2, edg);
     }
     
     for(let i = 0; i < numPoints; i++){
         const inc = edgeMap.get(i);
-        if(!inc){
-            //t.fail(`point ${i} has no incoming edges`);
+        if(inc === undefined){
+            if(!unTried.has(i)){
+                t.fail(`point ${i} has no incoming edges, but not found as un-triangulated`);
+                failed = true;
+            }else{
+                unTried.delete(i);
+            }
             continue;
         }
         
         const start = con.vertMap[i];
+        if(start > numEdges){
+            t.fail(`invalid start-edge in vertMap: vertMap[${i}] = ${start}`);
+            failed = true;
+            continue;
+        }
         let edg = start;
         do{
             if(!inc.has(edg)){
@@ -204,8 +221,8 @@ function validateVertMap(t: Test, points: PTS, con: Constrainautor){
             }
             
             inc.delete(edg);
-            const nxt = nextEdge(edg),
-                adj = del.halfedges[nxt];
+            const nxt = nextEdge(edg);
+            const adj = del.halfedges[nxt];
             edg = adj;
         }while(edg !== -1 && edg !== start);
         
@@ -218,6 +235,10 @@ function validateVertMap(t: Test, points: PTS, con: Constrainautor){
     
     if(edgeMap.size){
         t.fail(`invalid points in edge map: ${edgeMap}`);
+        failed = true;
+    }
+    if(unTried.size){
+        t.fail(`${unTried.size} points were found as un-triangulated, but had incoming edges`);
         failed = true;
     }
     

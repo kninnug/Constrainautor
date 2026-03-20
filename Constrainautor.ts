@@ -12,6 +12,8 @@ export interface DelaunatorLike {
 function nextEdge(e: number){ return (e % 3 === 2) ? e - 2 : e + 1; }
 function prevEdge(e: number){ return (e % 3 === 0) ? e + 2 : e - 1; }
 
+const U32NIL = 2**32 - 1; // Max value of a Uint32Array: use as a sentinel for not yet defined 
+
 /**
  * Constrain a triangulation from Delaunator, using (parts of) the algorithm
  * in "A fast algorithm for generating constrained Delaunay triangulations" by
@@ -20,7 +22,7 @@ function prevEdge(e: number){ return (e % 3 === 0) ? e + 2 : e - 1; }
 class Constrainautor {
     /**
      * @member del The triangulation object from Delaunator, which will be 
-     * moddified by Constrainautor.
+     * modified by Constrainautor.
      */
     public del: DelaunatorLike;
     vertMap: Uint32Array;
@@ -47,7 +49,6 @@ class Constrainautor {
         
         this.del = del;
         
-        const U32NIL = 2**32 - 1; // Max value of a Uint32Array: use as a sentinel for not yet defined 
         const numPoints = del.coords.length >> 1;
         const numEdges = del.triangles.length;
         
@@ -86,6 +87,10 @@ class Constrainautor {
         const vm = this.vertMap;
         const consd = this.consd;
         const start = vm[segP1];
+
+        if(start === U32NIL || vm[segP2] === U32NIL){
+            throw new Error(`Cannot constrain between points that are not triangulated`);
+        }
         
         // Loop over the edges touching segP1
         let edg = start;
@@ -332,6 +337,27 @@ class Constrainautor {
         }
 
         return Infinity;
+    }
+
+    /**
+     * Find points that are not triangulated. Trying to constrain an edge
+     * between two points either of which are not triangulated, will result in
+     * an error being thrown from constrainOne.
+     * 
+     * @return An array of ids of points that have no incoming edges.
+     */
+    untriangulatedPoints(){
+        const ret = [];
+        const vm = this.vertMap;
+        const numPoints = vm.length;
+
+        for(let i = 0; i < numPoints; i++){
+            if(vm[i] === U32NIL){
+                ret.push(i);
+            }
+        }
+
+        return ret;
     }
     
     /**

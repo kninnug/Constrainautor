@@ -13,16 +13,16 @@ into a *constrained* (but not necessarily *conforming*) triangulation. You
 specify two points in the triangulation, and Constrainautor ensures there is an
 edge between those points.
 
-	// A diamond
-	const points = [[150, 50], [50, 200], [150, 350], [250, 200]],
-		// Creates a horizontal edge in the middle
-		del = Delaunator.from(points),
-		con = new Constrainautor(del);
-	
-	// .. but we want a vertical edge, from [150, 50] to [150, 350]:
-	con.constrainOne(0, 2);
-	// del now has the constrained triangulation, in the same format that
-	// Delaunator outputs
+    // A diamond
+    const points = [[150, 50], [50, 200], [150, 350], [250, 200]];
+    // Creates a horizontal edge in the middle
+    const del = Delaunator.from(points),
+    const con = new Constrainautor(del);
+    
+    // .. but we want a vertical edge, from [150, 50] to [150, 350]:
+    con.constrainOne(0, 2);
+    // del now has the constrained triangulation, in the same format that
+    // Delaunator outputs
 
 ![Constrained diamond](diamond.png)
 
@@ -31,23 +31,23 @@ Install
 
 Install from NPM:
 
-	npm install @kninnug/constrainautor
-	
+    npm install @kninnug/constrainautor
+    
 Use in Node.js:
 
-	const Constrainautor = require('@kninnug/constrainautor');
-	
+    const Constrainautor = require('@kninnug/constrainautor');
+    
 or as an ECMAScript/ES6 module:
 
-	import Constrainautor from '@kninnug/constrainautor';
+    import Constrainautor from '@kninnug/constrainautor';
 
 or in the browser:
 
-	<script src="node_modules/@kninnug/constrainautor/lib/Constrainautor.js"></script>
+    <script src="node_modules/@kninnug/constrainautor/lib/Constrainautor.js"></script>
 
 or minified:
 
-	<script src="node_modules/@kninnug/constrainautor/lib/Constrainautor.min.js"></script>
+    <script src="node_modules/@kninnug/constrainautor/lib/Constrainautor.min.js"></script>
 
 The Constrainautor library does not depend on Delaunator itself, but the input
 is expected to be in the format that Delaunator outputs. The ES module variant
@@ -150,6 +150,14 @@ Find the id of the half-edge going from `p1` to `p2`. If there is only an edge
 from `p2` to `p1` (i.e. it is on the hull), it will return the negated id. If
 there is no edge between `p1` and `p2`, the return value is `Infinity`.
 
+#### con.untriangulatedPoints()
+
+When two or more points are close together, Delaunator will only triangulate one
+of them. This method will return a list of points that were not triangulated,
+i.e. which have no incoming (or outgoing) half-edges. Trying to constrain an
+edge between points, either of which are not triangulaged, will result in an
+error being thrown.
+
 #### con.del
 
 The Delaunator object passed to the constructor and modified by constraining.
@@ -186,6 +194,12 @@ methods. See the comments in `Constrainautor.ts` on how they should behave.
 Changes
 -------
 
+### 4.1.0
+- Throw in `constrainOne` when trying to constrain between points that are
+  [not triangulated](https://github.com/mapbox/delaunator/issues/94), to mitigate 
+  [issue #15](https://github.com/kninnug/Constrainautor/issues/15).
+- Add method `untriangulatedPoints` to get a list of such points.
+
 ### 4.0.1
 - Support `"moduleResolution": "bundler"` (thanks, [Bowen7](https://github.com/Bowen7)!)
 
@@ -194,7 +208,7 @@ Changes
 - Change return value of `delaunify` and `constrainAll` to return the 
   `Constrainautor` instance (the Delaunator output is still modified in place,
   and available at `con.del`).
-- Fix issue [#4](https://github.com/kninnug/Constrainautor/issues/4) by
+- Fix [issue #4](https://github.com/kninnug/Constrainautor/issues/4) by
   restoring the Delaunay condition immediately at the end of `constrainOne`.
   Due to this, calling `delaunify` manually is no longer necessary.
 - Add `findEdge` method.
@@ -221,7 +235,7 @@ Changes
 - Add `isConstrained` convenience method.
 
 ### 2.0.0
-- Fix issue [#2](https://github.com/kninnug/Constrainautor/issues/2) by
+- Fix [issue #2](https://github.com/kninnug/Constrainautor/issues/2) by
   using [robust-predicates](https://github.com/mourner/robust-predicates).
 - Remove `intersectSegments`, `inCircle`, and `segPointDistSq` from the API
   documentation.
@@ -229,7 +243,7 @@ Changes
 ### 1.0.1
 - Add documentation for internal intersect methods, which can be overridden to
   fix robustness issues.
-- Mitigate issue [#2](https://github.com/kninnug/Constrainautor/issues/2) by
+- Mitigate [issue #2](https://github.com/kninnug/Constrainautor/issues/2) by
   throwing when constraining segment leaves the hull.
 - Add test files from [Interesting Polygon Archive](https://github.com/LingDong-/interesting-polygon-archive).
 

@@ -25,6 +25,7 @@ function testFile(t: Test, test: TestFile){
 	con.delaunify(true);
 	//validateDelaunay(t, con);
 	
+	t.comment(`constrain`);
 	let caught: Error | null = null;
 	for(const [p1, p2] of edges){
 		let ret: number | undefined = undefined;
